@@ -1,6 +1,6 @@
 # QQ Bot 运维手册
 
-适用：ali-root（47.94.44.152）上的 QQ Bot 项目。源码私有仓库：<https://github.com/Renko6626/qqbot>。当前采用 SSH 手动更新和服务器构建，Coolify 负责发布、启停与日志；没有自动部署或 CI。
+适用：ali-root（47.94.44.152）上的 QQ Bot 项目。源码公开仓库：<https://github.com/Renko6626/qqbot>。当前采用 SSH 手动更新和服务器构建，Coolify 负责发布、启停与日志；没有自动部署或 CI。
 
 ## 日常入口
 
@@ -129,6 +129,8 @@ Compose源文件 `compose.nonebot.yaml` 在仓库中；线上真正发布使用C
 
 ## 仓库访问维护
 
-VPS通过专用只读SSH部署密钥拉取私有仓库，GitHub使用443端口。密钥位置 `/root/qq-bot-nonebot/github_readonly`，已知主机文件 `/root/qq-bot-nonebot/github_known_hosts`。该仓库的 `.git/config` 单独设置SSH命令，不修改服务器全局SSH行为。
+仓库已按用户要求从private转为public，其他机器可以直接使用 `git clone https://github.com/Renko6626/qqbot.git`，无需读取凭据。公开前检查了完整Git历史，未发现已知部署凭据或私钥/令牌模式。
+
+现有VPS继续使用已验证的专用只读SSH部署密钥和GitHub443端口，原更新命令不变。密钥位置 `/root/qq-bot-nonebot/github_readonly`，已知主机文件 `/root/qq-bot-nonebot/github_known_hosts`。该仓库的 `.git/config` 单独设置SSH命令，不修改服务器全局SSH行为。
 
 若遇仓库拉取权限错误，在GitHub qqbot仓库 Settings → Deploy keys 检查该公钥是否仍存在且为只读。密钥丢失后生成新的专用密钥、登记公钥、验证拉取，再删除旧登记；不要把私钥或本机GitHub令牌写入仓库。

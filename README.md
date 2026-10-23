@@ -13,7 +13,7 @@ Coolify 项目：QQ Bot。NapCat 与 NoneBot 是两个独立资源，分别启�
 - [旧插件迁移清单](docs/legacy-inventory.md)
 - [本次交付核验](docs/nonebot-delivery.md)
 
-源码仓库：<https://github.com/Renko6626/qqbot>（私有）。服务器源码位于 `/opt/qqbot`。更新时 SSH 执行 `cd /opt/qqbot && bash ops/nonebot.sh update`，构建成功后在 Coolify 的 NoneBot 资源点 **Restart**；详见功能容器运维手册。不会自动发布，也不会重启 NapCat。
+源码仓库：<https://github.com/Renko6626/qqbot>（公开）。服务器源码位于 `/opt/qqbot`。更新时 SSH 执行 `cd /opt/qqbot && bash ops/nonebot.sh update`，构建成功后在 Coolify 的 NoneBot 资源点 **Restart**；详见功能容器运维手册。不会自动发布，也不会重启 NapCat。
 
 现阶段不整包复制旧 `/root/mybot`。AI对话、RAG、图片模型及旧业务插件均待按实际需要逐个整理。代码依赖通过 `uv.lock` 和 `requirements.lock` 固定；本机检查使用 `uv run pytest -q`。
 
