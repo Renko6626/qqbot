@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!requirements.lock
+!qqbot/
+!qqbot/**
+qqbot/**/__pycache__/
+qqbot/**/*.pyc

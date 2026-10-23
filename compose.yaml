@@ -1,0 +1,29 @@
+services:
+  napcat:
+    image: mlikiowa/napcat-docker:v4.18.41
+    pull_policy: never
+    restart: unless-stopped
+    hostname: qq-napcat
+    mac_address: "02:42:6e:61:70:01"
+    environment:
+      TZ: Asia/Shanghai
+      NAPCAT_UID: "1000"
+      NAPCAT_GID: "1000"
+      MODE: ws
+    ports:
+      - "127.0.0.1:6099:6099"
+    volumes:
+      - /data/qq-bot/napcat/qq:/app/.config/QQ
+      - /data/qq-bot/napcat/config:/app/napcat/config
+      - /data/qq-bot/napcat/plugins:/app/napcat/plugins
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:6099/webui/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s

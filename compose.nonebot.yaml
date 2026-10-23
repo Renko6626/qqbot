@@ -1,0 +1,28 @@
+services:
+  nonebot:
+    image: qqbot:manual
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      BOT_ADMIN_USER: ${BOT_ADMIN_USER:?Set BOT_ADMIN_USER}
+      BOT_ADMIN_PASSWORD: ${BOT_ADMIN_PASSWORD:?Set BOT_ADMIN_PASSWORD}
+      BOT_ONEBOT_URL: ws://napcat-n4wkgdcd9fmbitucekxzuyk5:3001
+      BOT_ONEBOT_TOKEN: ${BOT_ONEBOT_TOKEN:?Set BOT_ONEBOT_TOKEN}
+      BOT_CONFIG_PATH: /app/data/plugins.json
+      BOT_COOLIFY_URL: ${BOT_COOLIFY_URL:-}
+    volumes:
+      - /data/qq-bot/nonebot:/app/data
+    ports:
+      - "127.0.0.1:18089:8080"
+    networks:
+      - napcat
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  napcat:
+    external: true
+    name: n4wkgdcd9fmbitucekxzuyk5

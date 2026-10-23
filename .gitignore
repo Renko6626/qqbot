@@ -1,0 +1,13 @@
+.venv/
+.qoder/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.sqlite*
+*.log
+.superdesign/
