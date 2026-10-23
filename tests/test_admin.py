@@ -4,7 +4,7 @@ import pytest
 
 from qqbot.admin import register_admin
 from qqbot.runtime import Runtime
-from qqbot.settings import PluginStore
+from qqbot.settings import PluginSettings, PluginStore
 
 
 @pytest.fixture
@@ -47,3 +47,19 @@ def test_invalid_or_cross_site_write_is_rejected(client):
     assert http.put("/api/plugins/ping", auth=auth, headers=headers,
                     json={"options": {"unknown": "value"}}).status_code == 422
     assert not runtime.allowed("ping", "12345")
+
+
+def test_permission_preview_uses_the_saved_rules(client):
+    http, runtime = client
+    runtime.store.save("ping", PluginSettings(
+        enabled=True, group_ids=["12345"], group_user_ids={"12345": ["11111"]}))
+    response = http.get("/api/plugins/ping/permission", params={"group_id": "12345", "user_id": "22222"},
+                        auth=("operator", "test-password"))
+    assert response.status_code == 200
+    assert response.json() == {"allowed": False, "reason": "该用户不在此群的插件白名单中"}
+
+
+def test_process_restart_requires_login_and_same_origin_header(client):
+    http, _ = client
+    assert http.post("/api/restart").status_code == 401
+    assert http.post("/api/restart", auth=("operator", "test-password")).status_code == 403

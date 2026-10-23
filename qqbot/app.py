@@ -6,6 +6,8 @@ from nonebot.adapters.onebot.v11 import Adapter
 
 from .admin import register_admin
 from .catalog import CATALOG
+from .lifecycle import restart_process
+from .rules import install_policy
 from .runtime import Runtime, set_runtime
 from .settings import PluginStore
 
@@ -29,6 +31,7 @@ def main():
     set_runtime(runtime)
     driver = nonebot.get_driver()
     driver.register_adapter(Adapter)
+    install_policy()
     for plugin_id, spec in CATALOG.items():
         if not runtime.store.get(plugin_id).load_on_start:
             continue
@@ -38,7 +41,8 @@ def main():
         else:
             runtime.loaded.add(plugin_id)
     register_admin(driver.server_app, runtime, username, password,
-                   os.environ.get("BOT_COOLIFY_URL", ""))
+                   os.environ.get("BOT_COOLIFY_URL", ""),
+                   restart_process if os.environ.get("BOT_PROCESS_RESTART_ENABLED") == "1" else None)
     nonebot.run()
 
 

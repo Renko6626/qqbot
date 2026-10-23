@@ -1,12 +1,12 @@
-import json
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from .catalog import CATALOG
 
 GroupId = Annotated[str, StringConstraints(pattern=r"^[1-9][0-9]{0,19}$")]
+UserId = GroupId
 
 
 class PluginSettings(BaseModel):
@@ -14,8 +14,20 @@ class PluginSettings(BaseModel):
     load_on_start: bool = True
     enabled: bool = False
     group_ids: list[GroupId] = Field(default_factory=list, max_length=500)
+    # Absent group entry means every member; an empty entry permits nobody.
+    group_user_ids: dict[GroupId, list[UserId]] = Field(default_factory=dict)
     allow_private: bool = False
+    # None preserves the original allow_private=True (all private users).
+    private_user_ids: list[UserId] | None = Field(default=None, max_length=1000)
     options: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_group_members(self):
+        if self.group_user_ids.keys() - set(self.group_ids):
+            raise ValueError("成员白名单必须属于已允许的群")
+        if any(len(users) > 1000 for users in self.group_user_ids.values()):
+            raise ValueError("每群成员白名单最多1000个用户")
+        return self
 
 
 class SettingsFile(BaseModel):
@@ -38,6 +50,10 @@ class PluginStore:
         options = CATALOG[plugin_id].options_model.model_validate(settings.options)
         return settings.model_copy(update={
             "group_ids": list(dict.fromkeys(settings.group_ids)),
+            "group_user_ids": {group: list(dict.fromkeys(users))
+                               for group, users in settings.group_user_ids.items()},
+            "private_user_ids": (list(dict.fromkeys(settings.private_user_ids))
+                                 if settings.private_user_ids is not None else None),
             "options": options.model_dump(),
         }, deep=True)
 
