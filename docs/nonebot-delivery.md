@@ -1,5 +1,7 @@
 # 2026-10-23 NoneBot 底座与管理页交付
 
+以下记录首次交付状态。后续已按用户确认接入私有仓库和VPS手动构建，当前操作以 [运维手册](nonebot-operations.md) 为准，实际执行记录见 [SSH运维核验](manual-operations-verification.md)。
+
 ## 已完成
 
 NoneBot与原NapCat作为同一Coolify项目的独立资源。用户确认的FastAPI、原生前端、单JSON配置和独立管理员账号密码已实现。一个进程提供OneBot客户端和管理页，Coolify管理容器生命周期。

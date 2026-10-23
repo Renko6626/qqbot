@@ -103,6 +103,8 @@ bash ops/nonebot.sh promote qqbot:git-<上一版完整提交号>
 
 再在 Coolify 点 NoneBot 的 Restart。`promote` 仅切换 `qqbot:manual` 指向，不触发部署，不自动回退数据格式。如新版改变了JSON结构，需要同时选择相应备份并人工恢复。
 
+平台或人工磁盘清理可能移除未使用的旧镜像。若所选镜像已不存在，可检出旧提交重新构建，再切换发布；操作结束后把源码工作区切回main，避免下次pull处于分离HEAD。
+
 `backup` 仅备份 `/data/qq-bot/nonebot` 到 `/root/qq-bot-nonebot/backups/`，权限仅root可读。若恢复配置，先在Coolify停掉NoneBot，再核对归档内容并恢复到原目录，保留UID:GID1000:1000，最后启动。不要把旧备份直接覆盖正在写入的配置。当前没有自动清理备份、定时备份或异机备份。
 
 ## 目录与职责
@@ -111,7 +113,7 @@ bash ops/nonebot.sh promote qqbot:git-<上一版完整提交号>
 | --- | --- |
 | /opt/qqbot | Git源码，只从仓库更新，不放运行秘密和业务数据 |
 | /data/qq-bot/nonebot | 插件配置plugins.json与后续功能数据，容器UID/GID1000 |
-| /root/qq-bot-nonebot | 部署密钥、已知主机、公有源码归档和私有初始凭据/备份，root私有 |
+| /root/qq-bot-nonebot | 部署密钥、已知主机、源码归档和初始凭据/备份，root私有 |
 | /data/qq-bot/napcat/{qq,config,plugins} | NapCat登录状态、配置与自身插件，不由NoneBot更新脚本操作 |
 | /data/coolify/services/8hzqwaltqvmjo73d5lkv2rll | Coolify生成的配置和.env，不手动编辑，不公开其中内容 |
 
