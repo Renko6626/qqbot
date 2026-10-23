@@ -26,3 +26,11 @@
 先备份配置，再执行原有SSH构建与Coolify发布。新用户白名单字段只在用户保存时写入；若回退到不识别这些字段的旧镜像，需停机后恢复对应旧配置。环境变量、密码和镜像更新仍由Coolify完成，网页进程重启不会应用它们。
 
 QQ实际指令及生产网页重启由用户使用核对；验证不自动向QQ发消息、撤回或禁言。管理进程启动失败时网页也不可用，Coolify保留为恢复入口。
+
+## 线上发布
+
+运行提交 `cce5fa0c8d6ebd5dcd70aa700075ffb712afa3e1`，镜像ID `sha256:898a7693ef45d9b345ff86bedac8e9239951e210b0a6bc57438ec4811ce99260`。VPS实际备份、pull和构建后，通过Coolify Restart发布。容器healthy，授权状态/插件/权限预览API均200，网页进程重启能力已开启；配置文件哈希与旧字段语义均保持，NapCat容器ID不变。
+
+升级前备份 `/root/qq-bot-nonebot/backups/nonebot-20261023T161253Z.tar.gz`，基线 `plugin-controls-before.json` 与构建日志 `plugin-controls-build.log` 位于同一个root私有运维目录。
+
+核验时QQ连接未恢复。NapCat日志报告登录错误ErrType1/ErrCode3，内部3001端口未监听；配置仍为启用的0.0.0.0:3001，容器网络与DNS正常，未修改协议配置或重启NapCat。已请用户在NapCat WebUI检查并重新登录，不将管理页healthy当成QQ已登录。此状态须在用户重新登录后再核对。
