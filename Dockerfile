@@ -7,7 +7,7 @@ COPY requirements.lock ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
     && useradd --uid 1000 --create-home bot \
     && mkdir -p /app/data && chown bot:bot /app/data
-COPY qqbot ./qqbot
+COPY --chown=bot:bot qqbot ./qqbot
 USER bot
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
