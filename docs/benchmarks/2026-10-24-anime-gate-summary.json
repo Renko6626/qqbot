@@ -1,0 +1,72 @@
+{
+  "model": "deepghs/anime_classification/mobilenetv3_v1.5_dist",
+  "revision": "5ee62e06f5f4cd68a1c2f3bc5dc9805e827d37df",
+  "sha256": "ea8f4497b0e3ee86f43b6a6fd38884e25f960979a1debb5c4e1ee6a22e80d111",
+  "python": "3.13.2",
+  "onnxruntime": "1.31.0",
+  "cpu": "Intel(R) Xeon(R) Gold 6330 CPU @ 2.00GHz",
+  "threads": 1,
+  "input": [
+    1,
+    3,
+    384,
+    384
+  ],
+  "sample_count": 26,
+  "labels": {
+    "illustration": 12,
+    "3d": 9,
+    "not_painting": 5
+  },
+  "tensor_benchmark_50_runs": {
+    "images_per_second": 49.21412409063042,
+    "mean_ms": 20.31594343483448,
+    "p50_ms": 19.368059933185577,
+    "p95_ms": 21.07301326468587
+  },
+  "sample_scope": "26 previously archived hits; not a random traffic sample or labeled NSFW benchmark",
+  "policies": [
+    {
+      "policy": "2d_only",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.8,
+      "passed_count": 11,
+      "blocked_count": 15
+    },
+    {
+      "policy": "2d_only",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.9,
+      "passed_count": 10,
+      "blocked_count": 16
+    },
+    {
+      "policy": "2d_only",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.95,
+      "passed_count": 9,
+      "blocked_count": 17
+    },
+    {
+      "policy": "2d_and_3d",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.8,
+      "passed_count": 20,
+      "blocked_count": 6
+    },
+    {
+      "policy": "2d_and_3d",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.9,
+      "passed_count": 19,
+      "blocked_count": 7
+    },
+    {
+      "policy": "2d_and_3d",
+      "score": "sum_of_allowed_classes",
+      "threshold": 0.95,
+      "passed_count": 18,
+      "blocked_count": 8
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+# 二次元闸门离线实验
+
+2026-10-24，仅在开发机运行，未修改线上插件、阈值、归档或回复行为。使用现存26条归档快照，包含旧模型误收内容和二次元候选；不是26张经人工确认的负例，也不是随机群消息样本。原图、缩略图和逐图结果仅在本地私有临时目录，不提交到公开仓库。
+
+## 模型与实现
+
+- 模型：[deepghs/anime_classification](https://huggingface.co/deepghs/anime_classification)，变体`mobilenetv3_v1.5_dist`，模型卡MIT。
+- 固定revision：`5ee62e06f5f4cd68a1c2f3bc5dc9805e827d37df`。
+- 权重：16,836,527字节，SHA256 `ea8f4497b0e3ee86f43b6a6fd38884e25f960979a1debb5c4e1ee6a22e80d111`，已与Hugging Face发布的LFS哈希及大小核对。
+- 标签顺序：`3d / bangumi / comic / illustration / not_painting`。固定变体没有preprocess.json，按[上游通用分类器](https://github.com/deepghs/imgutils/blob/main/imgutils/generic/classify.py)的384×384双线性、白底RGB、NCHW float32、mean/std=.5处理，复用现有解码与预处理函数。
+- ORT1.31.0，CPU单线程、SEQUENTIAL、全图优化、关闭自旋，输入固定`1×3×384×384`，输出`1×5`，直接使用模型概率，不再次softmax。
+
+本次实验将二维分数定义为`p(bangumi)+p(comic)+p(illustration)`，合计分数达到阈值才通过。不是只要求最高类别属于二维，也不是要求某一个二维类别独自达到阈值。类别内分数可以分散，例如一张双格图片在插画和漫画之间分散，最高类别约0.791，二维合计约0.997。
+
+## 回放结果
+
+这些输入原本均已命中并保存，所以闸门通过后仍会沿用各自原有的分级结果；本次没有调整r15+r18规则或重校分级模型。
+
+| 闸门 | 阈值 | 原26张中保留 | 原26张中挡下 |
+| --- | --- | --- | --- |
+| 仅二维合计 | 0.8 | 11 | 15 |
+| 仅二维合计 | 0.9 | 10 | 16 |
+| 仅二维合计 | 0.95 | 9 | 17 |
+| 二维＋3D合计 | 0.9 | 19 | 7 |
+
+在二维合计0.9的结果中，目视的真人照片、猫、玩偶、商品页面、游戏截图及真人/动漫拼接图均被挡住，保留内容以二次元人物图片为主。挡下16张只表示本快照的拦截数量，不能直接解释为准确率或误报率改善了61.5%。
+
+具体边界：
+
+- 普通二维动画表情包仍以二维分数约0.906通过；0.95会挡住它。这说明风格闸门不能判断图片是否属于希望收集的内容。
+- 3D虚拟主播样本以3D分数约0.998被挡下；想收集MMD或3D角色内容时，需要另行评估保留策略。
+- 本批部分真人照片、猫和玩偶也被模型归入3D。直接把3D类加入允许集合，会重新放进很多无关内容，不能把3D类当作已确认的动漫图。
+- 当前分级模型在二维内部仍可能对普通图片给出较高r15分数，是否保存仍由现有产品规则决定。
+
+这些结果支持先评估仅二维的闸门路线，但26张都是旧模型已命中的内容，无法估计未归档图片的漏收情况；不能仅用这一批结果把0.9或0.95定为可靠的线上默认值。
+
+## CPU与验证
+
+开发机Xeon Gold6330、Python3.13.2、ORT1.31.0。5次预热后，对最后一个样本的已处理张量串行推理50次，均值20.3ms、P95约21.1ms，约49张/秒。仅计闸门推理，不含下载、解码和分级模型；不代表VPS性能或完整链路增量。两模型预处理约定相同，后续接入可以复用下载、解码和输入张量。
+
+`pytest -q`40项通过；下载器默认rating与新gate分支的已有文件哈希核验通过，两个脚本编译和diff检查通过，独立审阅未发现重要问题。汇总数据见[匿名统计](benchmarks/2026-10-24-anime-gate-summary.json)。
+
+## 复现
+
+```bash
+uv run --extra nsfw python ops/fetch_deepghs_model.py --kind gate
+uv run --extra nsfw python ops/experiment_anime_gate.py \
+  --manifest /path/to/private/manifest.json --output /path/to/private/results.json
+```
+
+manifest为JSON列表，每项含匿名`index`、相对manifest目录的图片`file`及旧分级`scores`。脚本只读取本地图片、加载已下载模型并写指定结果文件，没有QQ连接或配置修改逻辑。原有不带`--kind`的下载命令仍下载rating模型，默认目录保持不变；gate保存至Git忽略的`data/models/deepghs_gate/model.onnx`。
