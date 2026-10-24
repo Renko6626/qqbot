@@ -7,6 +7,7 @@ const dirtyForms = new Set();
 const formatDate = value => new Date(value).toLocaleString("zh-CN", {hour12: false});
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 let restarting = false;
+let selectedPluginId = null;
 
 async function request(path, options = {}) {
   const response = await fetch(path, {cache: "no-store", ...options});
@@ -23,20 +24,66 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function pluginStatus(plugin) {
+  if (plugin.load_state === "failed") return {text: "加载失败", tone: "error"};
+  if (!plugin.loaded) return {text: "未加载", tone: ""};
+  return plugin.settings.enabled ? {text: "已加载，功能开启", tone: "active"} : {text: "已加载，功能关闭", tone: ""};
+}
+
+function updateDirectoryEntry(plugin) {
+  const entry = [...$("#plugin-directory").children].find(button => button.dataset.pluginId === plugin.id);
+  if (!entry) return;
+  const status = pluginStatus(plugin);
+  const state = $(".directory-status", entry);
+  state.textContent = status.text;
+  state.className = `directory-status ${status.tone}`;
+  $(".directory-pending", entry).hidden = !plugin.restart_required;
+  $(".directory-dirty", entry).hidden = !dirtyForms.has(plugin.id);
+}
+
+function selectPlugin(id, {scroll = false, focus = false} = {}) {
+  if (!plugins.has(id) || restarting) return;
+  selectedPluginId = id;
+  switchView("plugins");
+  for (const card of $("#plugins").children) card.hidden = card.id !== `plugin-${id}`;
+  for (const entry of $("#plugin-directory").children) {
+    if (entry.dataset.pluginId === id) entry.setAttribute("aria-current", "true");
+    else entry.removeAttribute("aria-current");
+  }
+  const card = document.getElementById(`plugin-${id}`);
+  if (scroll) card.scrollIntoView({block: "start"});
+  if (focus) card.focus({preventScroll: true});
+}
+
+function renderDirectory() {
+  const entries = [...plugins.values()].map(plugin => {
+    const entry = document.createElement("button");
+    entry.type = "button";
+    entry.className = "directory-entry";
+    entry.dataset.pluginId = plugin.id;
+    entry.setAttribute("aria-controls", `plugin-${plugin.id}`);
+    for (const [className, text] of [["directory-name", plugin.name], ["directory-status", ""],
+      ["directory-pending", "待重启"], ["directory-dirty", "未保存"]]) {
+      const label = document.createElement("span"); label.className = className; label.textContent = text;
+      entry.append(label);
+    }
+    entry.addEventListener("click", () => selectPlugin(plugin.id, {scroll: true}));
+    return entry;
+  });
+  $("#plugin-directory").replaceChildren(...entries);
+  for (const plugin of plugins.values()) updateDirectoryEntry(plugin);
+  if (!entries.length) {
+    const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "暂无插件";
+    $("#plugin-directory").append(empty);
+  }
+}
+
 function updateStatus(card, plugin) {
   const badge = $(".badge", card);
-  badge.className = "badge";
-  if (plugin.load_state === "failed") {
-    badge.textContent = "加载失败";
-    badge.classList.add("error");
-  } else if (!plugin.loaded) {
-    badge.textContent = "未加载";
-  } else if (plugin.settings.enabled) {
-    badge.textContent = "已加载，功能开启";
-    badge.classList.add("active");
-  } else {
-    badge.textContent = "已加载，功能关闭";
-  }
+  const status = pluginStatus(plugin);
+  badge.className = `badge ${status.tone}`;
+  badge.textContent = status.text;
+  updateDirectoryEntry(plugin);
   const error = $(".load-error", card);
   error.hidden = !plugin.load_error;
   error.textContent = plugin.load_error || "";
@@ -118,6 +165,8 @@ function groupRule(groupId, members, schema, overrides, inherited) {
 function createPlugin(plugin) {
   const card = $("#plugin-template").content.firstElementChild.cloneNode(true);
   card.id = `plugin-${plugin.id}`;
+  card.tabIndex = -1;
+  card.hidden = true;
   $("h3", card).textContent = plugin.name;
   $(".description", card).textContent = plugin.description;
   $(".commands", card).textContent = plugin.commands.join("  ");
@@ -158,6 +207,7 @@ function createPlugin(plugin) {
   }
   form.addEventListener("input", () => {
     dirtyForms.add(plugin.id);
+    updateDirectoryEntry(plugins.get(plugin.id));
     const status = $(".save-status", form);
     status.className = "save-status"; status.textContent = "有未保存的修改";
   });
@@ -222,7 +272,7 @@ function renderGroups() {
       const overrides = Object.keys(plugin.settings.group_options?.[group] || {}).length;
       text.textContent = `${plugin.name}：${active}，${scope}，${overrides ? `${overrides} 项群参数覆盖` : "继承公共参数"}`;
       const edit = document.createElement("button"); edit.className = "secondary"; edit.type = "button"; edit.textContent = "编辑插件";
-      edit.addEventListener("click", () => { switchView("plugins"); document.getElementById(`plugin-${plugin.id}`).scrollIntoView({block: "start"}); });
+      edit.addEventListener("click", () => selectPlugin(plugin.id, {scroll: true, focus: true}));
       row.append(text, edit); section.append(row);
     }
     container.append(section);
@@ -247,7 +297,19 @@ async function refresh() {
     } catch { /* The optional external link must not block plugin management. */ }
     plugins.clear(); dirtyForms.clear(); list.forEach(plugin => plugins.set(plugin.id, plugin));
     $("#plugins").replaceChildren(...list.map(createPlugin));
-    $("#plugin-count").textContent = `${list.length} 个插件`;
+    $("#plugin-count").textContent = `${list.length} 个`;
+    renderDirectory();
+    if (list.length) {
+      if (!plugins.has(selectedPluginId)) selectedPluginId = list[0].id;
+      // Refresh keeps the current view as well as the selected plugin.
+      const groupView = !$("#groups").hidden;
+      selectPlugin(selectedPluginId);
+      if (groupView) switchView("groups");
+    } else {
+      selectedPluginId = null;
+      const empty = document.createElement("p"); empty.className = "empty-state";
+      empty.textContent = "暂无可配置的插件。"; $("#plugins").append(empty);
+    }
     renderGroups();
     const select = $("#permission-form").elements.plugin_id; const selected = select.value;
     select.replaceChildren(...list.map(plugin => { const option = document.createElement("option"); option.value = plugin.id; option.textContent = plugin.name; return option; }));
