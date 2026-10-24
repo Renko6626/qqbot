@@ -30,6 +30,27 @@ def test_probability_output_is_not_softmaxed_twice():
         probability_scores(np.array([[4.0, 0.1, 0.2]]))
 
 
+def test_prepared_decode_applies_exif_before_resizing():
+    image = Image.new("RGB", (2, 4), "blue")
+    image.paste("red", (0, 0, 2, 2))
+    exif = Image.Exif(); exif[274] = 6  # Rotate clockwise: blue left, red right.
+    encoded = BytesIO(); image.save(encoded, format="PNG", exif=exif)
+    prepared, first_only = decode_image(encoded.getvalue(), max_pixels=8, size=8)
+    assert prepared.size == (8, 8) and prepared.mode == "RGB" and not first_only
+    assert prepared.getpixel((0, 0)) == (0, 0, 255)
+    assert prepared.getpixel((7, 0)) == (255, 0, 0)
+    assert 274 not in prepared.getexif()
+
+
+def test_rgb_transparent_color_key_keeps_white_background():
+    encoded = BytesIO()
+    Image.new("RGB", (2, 2), "red").save(encoded, format="PNG", transparency=(255, 0, 0))
+    original, _ = decode_image(encoded.getvalue(), max_pixels=4)
+    prepared, _ = decode_image(encoded.getvalue(), max_pixels=4, size=8)
+    assert prepared.getpixel((0, 0)) == (255, 255, 255)
+    assert preprocess(original)[0, :, 0, 0].tolist() == [1.0, 1.0, 1.0]
+
+
 def test_image_limits_and_animated_first_frame_are_explicit():
     with pytest.raises(InvalidImage): decode_image(png(), max_pixels=1)
     with pytest.raises(InvalidImage): decode_image(b"not an image", max_pixels=100)

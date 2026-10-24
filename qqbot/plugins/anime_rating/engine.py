@@ -29,23 +29,42 @@ class RatingResult:
     first_frame_only: bool
 
 
-def preprocess(image: Image.Image, size: int = 384) -> np.ndarray:
-    """Match upstream generic classifier: white RGB, bilinear, CHW, mean/std .5."""
-    rgba = ImageOps.exif_transpose(image).convert("RGBA")
-    white = Image.new("RGBA", rgba.size, "white")
-    white.alpha_composite(rgba)
-    rgb = white.convert("RGB").resize((size, size), Image.Resampling.BILINEAR)
-    values = np.asarray(rgb, dtype=np.float32) / np.float32(255)
-    values = (values - np.float32(0.5)) / np.float32(0.5)
+def _resize_rgb(image: Image.Image, size: int) -> Image.Image:
+    # RGB PNGs may also carry a transparent color key (tRNS).
+    if image.mode != "RGB" or "transparency" in image.info:
+        rgba = image.convert("RGBA")
+        white = Image.new("RGBA", rgba.size, "white")
+        white.alpha_composite(rgba)
+        image = white.convert("RGB")
+    return image.resize((size, size), Image.Resampling.BILINEAR)
+
+
+def _rgb_tensor(rgb: Image.Image) -> np.ndarray:
+    values = np.array(rgb, dtype=np.float32)
+    # Keep the upstream operation order without allocating intermediate arrays.
+    values /= np.float32(255)
+    values -= np.float32(0.5)
+    values /= np.float32(0.5)
     return np.ascontiguousarray(values.transpose(2, 0, 1)[None])
 
 
-def decode_image(data: bytes, max_pixels: int) -> tuple[Image.Image, bool]:
+def preprocess(image: Image.Image, size: int = 384) -> np.ndarray:
+    """Match upstream generic classifier: white RGB, bilinear, CHW, mean/std .5."""
+    return _rgb_tensor(_resize_rgb(ImageOps.exif_transpose(image), size))
+
+
+def decode_image(data: bytes, max_pixels: int, *, size: int | None = None) -> tuple[Image.Image, bool]:
+    """Detach the first frame; optionally return oriented, resized white RGB."""
     try:
         with Image.open(BytesIO(data)) as source:
             if source.width * source.height > max_pixels:
                 raise InvalidImage("图片像素过多，请缩小后重试。")
             first_only = bool(getattr(source, "is_animated", False))
+            if size is not None:
+                # Own this image: orient in place and shrink before detaching it.
+                # Avoid both the full-resolution copy and exif_transpose's copy.
+                ImageOps.exif_transpose(source, in_place=True)
+                return _resize_rgb(source, size), first_only
             # Freeze the first frame, preserving EXIF until preprocess handles it.
             return source.copy(), first_only
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
@@ -127,8 +146,8 @@ class DeepGHSEngine:
 
     def classify(self, data: bytes, *, max_pixels: int = 4_000_000) -> RatingResult:
         started = perf_counter()
-        image, first_only = decode_image(data, max_pixels)
-        tensor = preprocess(image, self.size)
+        image, first_only = decode_image(data, max_pixels, size=self.size)
+        tensor = _rgb_tensor(image)
         with self._lock:
             cold = self._compiled is None
             self._load()

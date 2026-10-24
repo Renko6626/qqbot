@@ -1,0 +1,51 @@
+{
+  "iterations": 30,
+  "order": "alternating before/after",
+  "scope": "decode and preprocess only, no inference/download",
+  "runs": [
+    {
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGB",
+      "format": "PNG",
+      "tensor_bit_identical": true,
+      "before_mean_ms": 13.935634680092335,
+      "after_mean_ms": 9.49707105755806
+    },
+    {
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGB",
+      "format": "JPEG",
+      "tensor_bit_identical": true,
+      "before_mean_ms": 11.996926926076412,
+      "after_mean_ms": 7.116490229964256
+    },
+    {
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGB",
+      "format": "JPEG",
+      "tensor_bit_identical": true,
+      "before_mean_ms": 45.12251876294613,
+      "after_mean_ms": 18.79608475913604
+    },
+    {
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "format": "PNG",
+      "tensor_bit_identical": true,
+      "before_mean_ms": 73.15340768545866,
+      "after_mean_ms": 73.84463244428237
+    }
+  ]
+}
