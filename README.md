@@ -14,6 +14,8 @@ SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.
 
 已部署独立管理的“手动图片识别”和“自动图片监测”，共用ORT CPU引擎。自动功能仅在`r15+r18≥0.8`时归档，默认引用原消息回复“我吃！”和猫猫表情包，回复文案留空时只保存。安装、群参数及归档目录见[图片识别说明](docs/deepghs-prototype.md)，新插件默认关闭，需分别启用并添加群白名单；[发布及回退记录](docs/deepghs-deployment.md)。
 
+本分支新增公共图集和“定时晚安”，尚未发布。控制页“图集管理”支持新建、切换、上传、查看原图、删除单张图片和空图集，操作沿用后台登录；也提供对应 HTTP 接口。自动图片监测改为写入可配置图集，晚安按北京时间定时发送文案和随机图片。使用说明见[图集与定时晚安](docs/albums-goodnight.md)。
+
 “启动时加载”改变后，可以直接点击管理页的 **重启 NoneBot 进程**。页面区分已加载、未加载、加载失败和待重启变更。进程重启会短暂断开连接，再由Docker自动拉起；环境变量和镜像更新仍需到Coolify点Restart。没有增加管理服务、平台token或Docker socket权限。
 
 - [功能容器运维](docs/nonebot-operations.md)

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>QQ Bot 插件管理</title>
+  <title>QQ Bot 管理</title>
   <link rel="stylesheet" href="/assets/admin.css">
   <script src="/assets/admin.js" type="module"></script>
 </head>
@@ -15,7 +15,7 @@
   </header>
   <main>
     <div class="heading">
-      <div><h1>插件管理</h1><p>控制机器人在哪些会话中提供哪些功能。</p></div>
+      <div><h1>机器人管理</h1><p>配置插件的使用范围，管理机器人使用的图集。</p></div>
       <div class="heading-actions"><button id="refresh" class="secondary" type="button">刷新状态</button><button id="restart" type="button" disabled>重启 NoneBot 进程</button></div>
     </div>
     <p id="page-error" class="error notice" role="alert" hidden></p>
@@ -42,10 +42,27 @@
         <a class="text-link" href="https://snowluma.secret-sealing.club/" target="_blank" rel="noopener">打开 SnowLuma 管理页 <span aria-hidden="true">↗</span></a>
       </aside>
       <div class="plugins-area">
-        <div class="list-heading"><div class="view-tabs" role="group" aria-label="查看方式"><button type="button" data-view="plugins" aria-pressed="true">按插件管理</button><button type="button" data-view="groups" aria-pressed="false">按群查看</button></div></div>
+        <div class="list-heading"><div class="view-tabs" role="group" aria-label="查看方式"><button type="button" data-view="plugins" aria-pressed="true">按插件管理</button><button type="button" data-view="groups" aria-pressed="false">按群查看</button><button type="button" data-view="albums" aria-pressed="false">图集管理</button></div></div>
         <p id="restart-notice" class="notice" hidden>加载配置有变更，重启 NoneBot 后生效。当前已加载的插件会继续运行。</p>
         <div id="plugins"><p class="muted">正在加载插件…</p></div>
         <div id="groups" hidden></div>
+        <section id="albums" class="album-panel" aria-labelledby="album-heading" hidden>
+          <div class="album-heading"><div><h2 id="album-heading">图集管理</h2><p class="description">上传的图片和插件保存的图片都可以在这里查看和清理。</p></div><button id="album-refresh" type="button" class="secondary">刷新图集</button></div>
+          <form id="album-create" class="album-create">
+            <label class="field">新图集 ID<input name="id" required maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" placeholder="例如 goodnight" autocomplete="off" spellcheck="false"><span class="field-hint">使用英文字母、数字、下划线或短横线。</span></label>
+            <button type="submit" class="secondary">新建图集</button>
+          </form>
+          <div class="album-selection"><label class="field">当前图集<select id="album-select" disabled><option value="">暂无图集</option></select></label><button id="album-delete" type="button" class="secondary danger" disabled>删除空图集</button></div>
+          <p class="field-hint">在插件的图集参数中填写对应 ID 即可使用。这里只删除空图集，已有图片需逐张清理。</p>
+          <form id="album-upload" class="album-upload" hidden>
+            <label class="field">选择图片<input name="image" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff,image/avif" required><span class="field-hint">单张最多 10 MiB，支持 JPG、PNG、GIF、WebP、BMP、TIFF、AVIF。</span></label>
+            <button type="submit">上传图片</button>
+          </form>
+          <p id="album-status" class="album-status" role="status" aria-live="polite"></p>
+          <div class="album-list-heading"><h3 id="album-current">尚未选择图集</h3><span id="album-image-count" class="muted"></span></div>
+          <div id="album-images" class="album-grid"><p class="album-empty muted">新建图集后即可上传图片。</p></div>
+        </section>
+        <div id="plugin-tools">
         <details class="permission-preview">
           <summary>权限预览</summary><p class="field-hint">按已保存配置判断；未保存的修改不参与预览。</p>
           <form id="permission-form">
@@ -57,6 +74,7 @@
           </form>
         </details>
         <p class="footnote">这里只列出已整理并接入的插件。旧 AI 对话、知识库和图片模型尚未迁移。</p>
+        </div>
       </div>
     </div>
   </main>

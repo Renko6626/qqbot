@@ -161,8 +161,7 @@ def rating_plugins(monkeypatch, tmp_path):
     client = httpx.AsyncClient
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client(
         transport=httpx.MockTransport(respond), **kwargs))
-    root = tmp_path / "archive"
-    monkeypatch.setenv("BOT_DEEPGHS_ARCHIVE_DIR", str(root))
+    root = runtime.albums.root
 
     class CaptureBot(Bot):
         async def send(self, event, message, **kwargs):
@@ -206,9 +205,11 @@ def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply,
     originals = []
     for path in records:
         record = json.loads(path.read_text())
-        assert record["group_id"] == "12345" and record["message_id"] == "1"
-        assert record["scores"]["r15"] + record["scores"]["r18"] >= 0.8
-        assert record["gate"]["label"] == "illustration"
+        assert record["album"] == "anime-rating-hits" and record["source"] == "anime_rating_watch"
+        metadata = record["metadata"]
+        assert metadata["group_id"] == "12345" and metadata["message_id"] == "1"
+        assert metadata["scores"]["r15"] + metadata["scores"]["r18"] >= 0.8
+        assert metadata["gate"]["label"] == "illustration"
         originals.append(path.with_name(record["image_file"]).read_bytes())
     assert sorted(originals) == sorted(harness.payloads[c] for c in saved_colors)
     if reply_count:
@@ -247,6 +248,12 @@ def test_monitor_has_independent_permissions_and_group_overrides(rating_plugins)
     harness.runtime.store.save("anime_rating_watch", settings)
     harness.run("anime_rating_watch", event)
     assert not list(harness.root.rglob("*.json")) and not harness.sent
+    settings.group_options = {"12345": {"album": "custom-hits"}}
+    harness.runtime.store.save("anime_rating_watch", settings)
+    harness.run("anime_rating_watch", event)
+    records = harness.runtime.albums.list_images("custom-hits")
+    assert len(records) == 1 and records[0]["metadata"]["group_id"] == "12345"
+    assert harness.runtime.albums.list_images("anime-rating-hits") == []
     settings.enabled = False
     harness.runtime.store.save("anime_rating_watch", settings)
     harness.runtime.store.save("anime_rating", PluginSettings(enabled=True, group_ids=["12345"]))

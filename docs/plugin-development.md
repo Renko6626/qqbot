@@ -59,6 +59,12 @@ async def handle(context: PluginContext = Depends(plugin_context, use_cache=Fals
 
 数据文件按需放 `/app/data/<插件ID>/`，不得互相导入业务插件。当前没有全量消息归档、网页日志数据库或任务队列；需要数据库/模型/外部接口时先确认范围。
 
+### 公共图集
+
+插件通过 `get_runtime().albums` 读写公共图集，无需调用其他插件。根目录为配置文件同级的 `albums/`，默认 `/app/data/albums/`（容器）或 `data/albums/`（本地）。图集 ID 可在 Options 中使用 `qqbot.albums.AlbumId` 类型，支持现有公共参数及群覆盖。
+
+`add_image(album, data, source=插件ID, metadata=业务信息)` 保留原图并保存 JSON 记录，首次写入自动创建图集；`random_image(album)` 返回随机图片 Path 或 None。这些是同步文件操作，异步处理器使用 `anyio.to_thread.run_sync` 调用。元数据不放完整消息、下载 URL 或密钥。完整接口与示例见[图集与定时晚安](albums-goodnight.md)。图集模块不会执行插件权限判断，消息和后台发送仍分别遵守宿主权限检查。
+
 ## 智能左右对称
 
 命令 `/智能左右对称`，支持同条附图、回复图片或按提示补发。先尝试真人、再动漫人脸，取最大人脸中心；无脸用中线，左侧镜像到右侧。保留旧算法的裁剪语义，输出宽度可能变化；GIF 每帧处理后统一透明画布，保留时长和循环设置。

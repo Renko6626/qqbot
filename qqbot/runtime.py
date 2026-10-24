@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 
 from .catalog import CATALOG
+from .albums import AlbumStore
 from .settings import PluginStore
 
 
 class Runtime:
     def __init__(self, store: PluginStore):
         self.store = store
+        self.albums = AlbumStore(store.path.parent / "albums")
         self.loaded: set[str] = set()
         self.load_errors: dict[str, str] = {}
         self.started_at = datetime.now(timezone.utc).isoformat()

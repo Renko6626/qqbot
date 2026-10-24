@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from starlette.responses import Response
 
 from .catalog import CATALOG
+from .album_api import register_album_routes
 from .runtime import Runtime
 from .settings import GroupId, PluginSettings, UserId
 
@@ -56,7 +57,7 @@ def register_admin(app: FastAPI, runtime: Runtime, username: str,
 
     @router.get("/assets/{name}")
     async def asset(name: str):
-        if name not in {"admin.css", "admin.js", "forms.js"}:
+        if name not in {"admin.css", "admin.js", "forms.js", "albums.js"}:
             raise HTTPException(404)
         return FileResponse(STATIC / name, headers={"Cache-Control": "no-store"})
 
@@ -100,5 +101,6 @@ def register_admin(app: FastAPI, runtime: Runtime, username: str,
     async def health():
         return {"status": "ok"}
 
+    register_album_routes(router, runtime.albums, check_write)
     app.include_router(router)
     app.add_middleware(AdminRoutesOnly)

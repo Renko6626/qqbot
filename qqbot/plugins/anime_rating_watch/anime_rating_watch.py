@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import anyio
@@ -11,6 +10,7 @@ from nonebot.plugin import PluginMetadata
 from qqbot.context import PluginContext, plugin_context
 from qqbot.image_rating import service
 from qqbot.image_rating.engine import InferenceUnavailable, InvalidImage
+from qqbot.runtime import get_runtime
 from .archive import save_hit
 from .spec import SPEC
 
@@ -52,7 +52,7 @@ async def monitor(bot: Bot, event: GroupMessageEvent,
                 context.logger.info("自动识别未命中 score={:.4f} threshold={:.4f}", score, options.threshold)
                 continue
             await anyio.to_thread.run_sync(lambda: save_hit(
-                analysis, Path(os.environ.get("BOT_DEEPGHS_ARCHIVE_DIR", "data/anime_rating_hits")),
+                analysis, get_runtime().albums, options.album,
                 group_id=event.group_id, message_id=event.message_id))
             saved += 1
             context.logger.info("自动识别已保存 score={:.4f} threshold={:.4f} inference_ms={:.1f}",

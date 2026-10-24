@@ -1,5 +1,6 @@
 "use strict";
 import {optionsForm, parseIds} from "./forms.js";
+import {setupAlbums} from "./albums.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const plugins = new Map();
@@ -8,13 +9,14 @@ const formatDate = value => new Date(value).toLocaleString("zh-CN", {hour12: fal
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 let restarting = false;
 let selectedPluginId = null;
+let currentView = "plugins";
 
 async function request(path, options = {}) {
   const response = await fetch(path, {cache: "no-store", ...options});
   if (!response.ok) {
     if (response.status === 401) throw new Error("登录已失效，请刷新页面重新登录。");
-    if (response.status === 422) throw new Error("输入不符合要求，请检查群号、QQ 号和插件参数。");
-    let message = `请求失败（${response.status}），请刷新或查看 Coolify 日志。`;
+    let message = response.status === 422 ? "输入不符合要求，请检查填写内容。" :
+      `请求失败（${response.status}），请刷新或查看 Coolify 日志。`;
     try {
       const body = await response.json();
       if (typeof body.detail === "string") message = body.detail;
@@ -23,6 +25,8 @@ async function request(path, options = {}) {
   }
   return response.json();
 }
+
+const albumManager = setupAlbums(request);
 
 function pluginStatus(plugin) {
   if (plugin.load_state === "failed") return {text: "加载失败", tone: "error"};
@@ -248,8 +252,12 @@ function createPlugin(plugin) {
 }
 
 function switchView(name) {
+  currentView = name;
   $("#plugins").hidden = name !== "plugins"; $("#groups").hidden = name !== "groups";
+  $("#albums").hidden = name !== "albums";
+  $("#plugin-tools").hidden = name === "albums";
   document.querySelectorAll("[data-view]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.view === name)));
+  if (name === "albums") albumManager.refresh();
 }
 
 function renderGroups() {
@@ -302,9 +310,9 @@ async function refresh() {
     if (list.length) {
       if (!plugins.has(selectedPluginId)) selectedPluginId = list[0].id;
       // Refresh keeps the current view as well as the selected plugin.
-      const groupView = !$("#groups").hidden;
+      const previousView = currentView;
       selectPlugin(selectedPluginId);
-      if (groupView) switchView("groups");
+      if (previousView !== "plugins") switchView(previousView);
     } else {
       selectedPluginId = null;
       const empty = document.createElement("p"); empty.className = "empty-state";
@@ -367,4 +375,5 @@ $("#restart").addEventListener("click", async () => {
     $("#refresh").disabled = false; $("#restart").disabled = false;
   } finally { $(".plugins-area").inert = false; }
 });
+if (location.hash === "#albums") switchView("albums");
 refresh();
