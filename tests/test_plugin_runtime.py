@@ -183,7 +183,7 @@ def rating_plugins(monkeypatch, tmp_path):
 @pytest.mark.parametrize("colors,reply,saved_count,reply_count", [
     (["red"], "命中提示", 0, 0),
     (["blue"], "", 1, 0),
-    (["red", "blue", "lime"], "命中提示", 2, 1),
+    (["red", "blue", "lime"], None, 2, 1),
 ])
 def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply, saved_count, reply_count):
     import json
@@ -191,7 +191,7 @@ def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply,
 
     harness = rating_plugins
     harness.runtime.store.save("anime_rating_watch", PluginSettings(
-        enabled=True, group_ids=["12345"], options={"reply_text": reply}))
+        enabled=True, group_ids=["12345"], options={} if reply is None else {"reply_text": reply}))
     images = [MessageSegment("image", {"file": "test", "url": f"https://images.example/{color}"})
               for color in colors]
     event = group_event().model_copy(update={"message": Message(images)})
@@ -206,8 +206,18 @@ def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply,
         originals.append(path.with_name(record["image_file"]).read_bytes())
     assert sorted(originals) == sorted(harness.payloads[c] for c in colors if c != "red")
     if reply_count:
+        import base64
+        from io import BytesIO
+        from PIL import Image
+
         assert harness.sent[0][0] == MessageSegment.reply(1)
-        assert harness.sent[0].extract_plain_text() == reply
+        assert harness.sent[0].extract_plain_text() == ("我吃！" if reply is None else reply)
+        assert [segment.type for segment in harness.sent[0]] == ["reply", "text", "image"]
+        file = harness.sent[0][2].data["file"]
+        assert file.startswith("base64://")
+        with Image.open(BytesIO(base64.b64decode(file.removeprefix("base64://")))) as image:
+            assert image.format == "JPEG"
+            image.verify()
 
 
 def test_monitor_has_independent_permissions_and_group_overrides(rating_plugins):

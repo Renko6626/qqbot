@@ -28,6 +28,7 @@ def is_monitor_message(event: MessageEvent) -> bool:
 
 
 matcher = on_message(rule=is_monitor_message, priority=20, block=False)
+REACTION_IMAGE = Path(__file__).with_name("assets") / "milly_cat.jpg"
 
 
 @matcher.handle()
@@ -60,4 +61,6 @@ async def monitor(bot: Bot, event: GroupMessageEvent,
         except Exception as exc:
             context.logger.error("自动识别或保存失败：{}", type(exc).__name__)
     if saved and options.reply_text:
-        await bot.send(event, MessageSegment.reply(event.message_id) + MessageSegment.text(options.reply_text))
+        await bot.send(event, MessageSegment.reply(event.message_id)
+                       + MessageSegment.text(options.reply_text)
+                       + MessageSegment.image(REACTION_IMAGE.read_bytes()))
