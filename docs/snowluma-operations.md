@@ -42,7 +42,7 @@ ssh -N -L 15099:127.0.0.1:15099 -L 16081:127.0.0.1:16081 ali-root
 ssh ali-root 'cat /root/qq-bot-snowluma/credentials.json'
 ```
 
-`webui_username` / `webui_initial_password` 用于管理页，`vnc_password` 用于扫码桌面；文件还保存 OneBot HTTP/WS 的独立令牌。文件权限为 600，不要公开输出。后续在 WebUI 改密后，以新密码为准，这份首次启动记录不会自动同步。
+管理页只需在 Token/密码框填写 `webui_initial_password`，不需要输入用户名；`webui_username` 是启动日志中保留的账号标签。`vnc_password` 用于扫码桌面；文件还保存 OneBot HTTP/WS 的独立令牌，不能拿它们登录管理页。文件权限为 600，不要公开输出。后续在 WebUI 改密后，以新密码为准，这份首次启动记录不会自动同步。
 
 Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/ha3hckthz1jjytu0puicixro)，容器名 `snowluma-ha3hckthz1jjytu0puicixro`。服务器 Compose 副本 `/root/qq-bot-snowluma/compose.yaml`；线上以 Coolify 中的 Compose 为准。
 
