@@ -57,4 +57,4 @@ uv run --extra nsfw python ops/benchmark_deepghs.py --threads 2 --iterations 50 
 
 `pytest -q` 32项通过（现有Starlette/httpx弃用提示保留）。测试包含官方归一化、透明底、输出不重复Softmax、像素边界、动图首帧提示和真实OpenVINO小图运行/复用。官方固定模型已本地成功推理并完成上述基准。模型下载哈希核验通过；所有插件可加载，而OpenVINO模块和模型不会随插件发现自动加载。
 
-尚未部署或在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准；后续上线前再决定测试群和运行容器配置。
+尚未部署或在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准。当前Dockerfile按默认requirements.lock构建，不包含nsfw可选运行时，本原型按上面的uv命令运行；上线前需要确认可选依赖的容器构建方式、模型持久化挂载及测试群。
