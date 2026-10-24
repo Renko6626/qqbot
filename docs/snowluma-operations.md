@@ -34,7 +34,7 @@ ssh -N -L 15099:127.0.0.1:15099 -L 16081:127.0.0.1:16081 ali-root
 - 管理页：`http://127.0.0.1:15099/`
 - 扫码桌面：`http://127.0.0.1:16081/`
 
-两者各有独立密码。首次启动随机生成；凭据仅保存在 VPS 的 root 私有记录中，不进 Git。初始日志可能含密码，不要直接分享完整日志。
+两者各有独立密码，凭据仅保存在 VPS 的 root 私有记录中，不进 Git。VNC 密码持久化保存；WebUI 在尚未完成首次强制改密时，每次启动都会重新生成临时密码。启动日志可能含密码，不要直接分享完整日志。
 
 在自己的终端，或 Coolify 的 localhost 服务器终端中读取：
 
@@ -42,7 +42,7 @@ ssh -N -L 15099:127.0.0.1:15099 -L 16081:127.0.0.1:16081 ali-root
 ssh ali-root 'cat /root/qq-bot-snowluma/credentials.json'
 ```
 
-管理页只需在 Token/密码框填写 `webui_initial_password`，不需要输入用户名；`webui_username` 是启动日志中保留的账号标签。`vnc_password` 用于扫码桌面；文件还保存 OneBot HTTP/WS 的独立令牌，不能拿它们登录管理页。文件权限为 600，不要公开输出。后续在 WebUI 改密后，以新密码为准，这份首次启动记录不会自动同步。
+管理页只需在 Token/密码框填写 `webui_initial_password`，不需要输入用户名；`webui_username` 是启动日志中保留的账号标签。`vnc_password` 用于扫码桌面；文件还保存 OneBot HTTP/WS 的独立令牌，不能拿它们登录管理页。文件权限为 600，不要公开输出。登录后按页面要求设置正式密码；完成后，正常重启会保留正式密码。凭据文件是人工保存的记录，不会自动跟随 WebUI 改密或临时密码再生成。若首次改密前重启过服务，需要从当前启动日志重新提取临时密码。
 
 Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/ha3hckthz1jjytu0puicixro)，容器名 `snowluma-ha3hckthz1jjytu0puicixro`。服务器 Compose 副本 `/root/qq-bot-snowluma/compose.yaml`；线上以 Coolify 中的 Compose 为准。
 
@@ -89,3 +89,8 @@ Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/ze
 - HTTP 自动跳到 HTTPS，域名专用 ACME challenge 路由已保留供续期；未演练未来续期。
 - SnowLuma 重建后 healthy / RestartCount 0；NapCat、NoneBot 启动时间未变。初始凭据和卷保持，未切换业务接入。
 - 首次域名配置前的 Coolify 服务快照保存在 `/root/qq-bot-snowluma/coolify-before-domains.json`。关闭公网入口时，先在 Coolify 删除本服务两个 URL 并重建，再移走 `snowluma-acme.yaml`；SSH 回环入口仍可用，不重置共享代理。
+
+
+### 临时密码失效排查（2026-10-24）
+
+v2.1.1 的 `packages/core/src/webui/auth.ts` 在 `mustChangePassword=true` 时，每次启动生成新临时密码并更新哈希；正式密码设置后才不再这样轮换。此前 HTTPS 重建触发这一行为，root 凭据副本仍为旧值。已从当前容器启动日志同步 `webui_initial_password`，用相同 scrypt 参数核对：旧值与在线配置不匹配，新保存值匹配。没有重置密码、修改认证实现或重启服务；页面实际登录由用户完成。重复读取凭据文件获取更新后的值，登录后完成强制改密。
