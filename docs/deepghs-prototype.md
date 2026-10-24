@@ -23,13 +23,15 @@ uv run python ops/fetch_deepghs_model.py
 uv run --extra nsfw --env-file .env python -m qqbot.app
 ```
 
-`BOT_DEEPGHS_MODEL_PATH` 默认 `data/models/deepghs_rating/model.onnx`；`BOT_DEEPGHS_THREADS` 默认1，可设2。OpenVINO只在nsfw可选依赖中，普通安装不会带入该运行时。模型在第一次识别时加载编译并复用，加载和推理在线程中执行，同一引擎串行使用自己的InferRequest；没有新增任务队列或常驻服务。
+`BOT_DEEPGHS_MODEL_PATH` 默认 `data/models/deepghs_rating/model.onnx`；`BOT_DEEPGHS_THREADS` 默认1，可设2。当前引擎为ONNX Runtime1.31.0，位于nsfw可选依赖中，普通安装不会带入该运行时。模型在第一次识别时创建CPU InferenceSession并复用，加载和推理在线程中执行，同一引擎串行使用会话；没有新增任务队列或常驻服务。
+
+使用CPUExecutionProvider、SEQUENTIAL、全图优化，intra线程按上述环境变量设置、inter线程固定1，两类线程自旋均关闭。固定模型的batch/height/width设为1/384/384，并校验输入float32 NCHW及三分类输出。预处理与概率返回方式保持原样。只支持ONNX文件；旧OpenVINO XML/BIN不能作为模型路径。升级现有开发环境运行`uv sync --extra nsfw`，uv会移除OpenVINO并安装ORT；不需要重新下载同一份ONNX权重。
 
 管理页会自动发现“图片分级（DeepGHS）”，默认关闭且无授权范围。配置允许群或私聊用户并启用后，使用 `/色图识别` 或 `/识别色图`，支持同条附图、回复图及提示后补图。白名单、群参数覆盖和插件日志复用宿主设施。
 
 回复包含三个分数、最高分标签、纯推理及图片处理耗时，下载耗时不包含在后者。首次调用另外注明加载耗时。动图仅看首帧并明确提示；不把首帧结果解释为全部动画安全。默认下载10MiB、400万像素，超过上限给出提示。
 
-## 开发机CPU数量级
+## 历史OpenVINO开发机CPU数量级
 
 本轮依用户要求只在开发机测量，没有在忙碌的VPS上加载或运行模型。开发机为Intel Xeon Gold 6330 @2.00GHz，112个逻辑CPU可见；OpenVINO2026.4.1、Python3.13.2。每次限制1或2个推理线程、1 stream、batch=1、384×384 float32，串行请求；5次预热，各测50次。两个线程配置分别启动独立进程，避免冷启动和内存结果互相污染。
 
@@ -44,7 +46,7 @@ uv run --extra nsfw --env-file .env python -m qqbot.app
 
 前一轮同机结果为单线程纯推理约46–50张/秒、图片处理约29–31张/秒，反映共享开发机调度波动。可据此判断为**每张几十毫秒、每秒几十张**的图片处理数量级；VPS只有2个vCPU且微架构/负载不同，不能按开发机数据承诺线上吞吐量。默认仍建议单线程用于低频手动调用。
 
-复现命令（两个独立进程）：
+以下命令当前用于测量ORT（两个独立进程）；本节历史OpenVINO数字保留为优化前记录，需用旧提交`a4eb085`及其依赖复现。两种引擎的近期对照使用[独立比较脚本](deepghs-runtime-comparison.md)。
 
 ```bash
 uv run --extra nsfw python ops/benchmark_deepghs.py --threads 1 --iterations 50 --warmup 5 --output /tmp/deepghs-cpu1.json
@@ -70,8 +72,8 @@ uv run --extra nsfw python ops/benchmark_deepghs.py --threads 2 --iterations 50 
 
 ## 验证与当前边界
 
-优化后的OpenVINO与ONNX Runtime开发机对照见[运行时比较](deepghs-runtime-comparison.md)，当前引擎仍为OpenVINO。
+优化后的OpenVINO与ONNX Runtime开发机对照见[运行时比较](deepghs-runtime-comparison.md)。用户确认后，原型已切换到ORT单线程；项目nsfw依赖不再包含OpenVINO。
 
-`pytest -q` 34项通过（现有Starlette/httpx弃用提示保留）。测试包含官方归一化、透明底、RGB透明颜色键、缩放前EXIF方向校正、输出不重复Softmax、像素边界、动图首帧提示和真实OpenVINO小图运行/复用。官方固定模型已本地成功推理并完成上述基准。模型下载哈希核验通过；所有插件可加载，而OpenVINO模块和模型不会随插件发现自动加载。
+`pytest -q` 34项通过（现有Starlette/httpx弃用提示保留）。测试包含官方归一化、透明底、RGB透明颜色键、缩放前EXIF方向校正、输出不重复Softmax、像素边界、动图首帧提示和真实ORT小图运行/复用。小图为仓库内无权重的ReduceMean→Softmax ONNX夹具，重建说明见`tests/fixtures/generate_rating_model.py`；运行测试不需要安装onnx模型制作库。官方固定模型已本地通过ORT完整处理路径运行。所有插件可加载，而ORT模块和模型不会随插件发现自动加载。
 
 尚未部署或在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准。当前Dockerfile按默认requirements.lock构建，不包含nsfw可选运行时，本原型按上面的uv命令运行；上线前需要确认可选依赖的容器构建方式、模型持久化挂载及测试群。

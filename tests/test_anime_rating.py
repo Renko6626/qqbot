@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -65,14 +66,9 @@ def test_missing_model_has_actionable_error(tmp_path):
         DeepGHSEngine(tmp_path / "missing.onnx").classify(png())
 
 
-def test_real_openvino_engine_reuses_loaded_model_and_preserves_probabilities(tmp_path):
-    ov = pytest.importorskip("openvino")
-    from openvino import opset13 as ops
-
-    parameter = ops.parameter([-1, 3, -1, -1], np.float32, name="input")
-    means = ops.reduce_mean(parameter, ops.constant([2, 3], np.int64), keep_dims=False)
-    model = ov.Model([ops.softmax(means, 1)], [parameter], "three_channel_means")
-    path = tmp_path / "model.xml"; ov.serialize(model, path)
+def test_real_ort_engine_reuses_loaded_model_and_preserves_probabilities():
+    pytest.importorskip("onnxruntime")
+    path = Path(__file__).parent / "fixtures" / "rating_channel_means.onnx"
     engine = DeepGHSEngine(path)
     first = engine.classify(png())
     second = engine.classify(png())

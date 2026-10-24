@@ -66,27 +66,26 @@ def main():
     report["imported_rss_mib"] = rss_mib()
     started = perf_counter()
     if args.backend == "openvino":
+        core = runtime.Core()
+        model = core.read_model(str(args.model))
+        model.reshape({model.input(0): [1, 3, 384, 384]})
+        compiled = core.compile_model(model, "CPU", {
+            "INFERENCE_NUM_THREADS": args.threads, "NUM_STREAMS": 1,
+            "PERFORMANCE_HINT": "LATENCY",
+        })
+        request = compiled.create_infer_request()
+        output = compiled.output(0)
+
+        def infer(tensor):
+            return probability_scores(request.infer({0: tensor})[output])
+
+        report["settings"] = {"streams": 1, "performance_hint": "LATENCY",
+                              "precision_hint": str(compiled.get_property("INFERENCE_PRECISION_HINT"))}
+    else:
         engine = DeepGHSEngine(args.model, threads=args.threads)
         engine.load()
         infer = engine.infer_tensor
-        report["settings"] = {"streams": 1, "performance_hint": "LATENCY",
-                              "precision_hint": str(engine._compiled.get_property("INFERENCE_PRECISION_HINT"))}
-    else:
-        options = runtime.SessionOptions()
-        options.intra_op_num_threads = args.threads
-        options.inter_op_num_threads = 1
-        options.execution_mode = runtime.ExecutionMode.ORT_SEQUENTIAL
-        options.graph_optimization_level = runtime.GraphOptimizationLevel.ORT_ENABLE_ALL
-        options.add_session_config_entry("session.intra_op.allow_spinning", "0")
-        options.add_session_config_entry("session.inter_op.allow_spinning", "0")
-        for name, size in [("batch", 1), ("height", 384), ("width", 384)]:
-            options.add_free_dimension_override_by_name(name, size)
-        session = runtime.InferenceSession(str(args.model), options, providers=["CPUExecutionProvider"])
-        input_name = session.get_inputs()[0].name
-
-        def infer(tensor):
-            return probability_scores(session.run(None, {input_name: tensor})[0])
-
+        session = engine._session
         report["settings"] = {"providers": session.get_providers(), "spinning": False,
                               "execution": "SEQUENTIAL", "graph_optimization": "ALL",
                               "resolved_input": session.get_inputs()[0].shape}

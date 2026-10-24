@@ -89,42 +89,44 @@ class DeepGHSEngine:
         self.size = size
         self.threads = threads
         self._lock = Lock()
-        self._compiled = None
-        self._request = None
-        self._output = None
+        self._session = None
+        self._input_name = None
+        self._output_name = None
         self.load_ms = 0.0
 
     def _load(self) -> None:
-        if self._compiled is not None:
+        if self._session is not None:
             return
         if not self.model_path.is_file():
             raise InferenceUnavailable("识别模型未配置，请联系管理员设置模型文件。")
-        if self.model_path.suffix == ".xml" and not self.model_path.with_suffix(".bin").is_file():
-            raise InferenceUnavailable("模型权重文件缺失，请核对配置。")
+        if self.model_path.suffix.lower() != ".onnx":
+            raise InferenceUnavailable("请配置ONNX模型文件；当前引擎不支持OpenVINO XML模型。")
         try:
-            import openvino as ov
+            import onnxruntime as ort
         except ImportError as exc:
             raise InferenceUnavailable("识别运行时未安装，请安装项目的 nsfw 可选依赖。") from exc
         started = perf_counter()
-        core = ov.Core()
-        model = core.read_model(str(self.model_path))
-        if len(model.inputs) != 1 or len(model.outputs) != 1:
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = self.threads
+        options.inter_op_num_threads = 1
+        options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+        options.add_session_config_entry("session.inter_op.allow_spinning", "0")
+        # Symbol names come from the pinned DeepGHS ONNX model.
+        for name, size in [("batch", 1), ("height", self.size), ("width", self.size)]:
+            options.add_free_dimension_override_by_name(name, size)
+        session = ort.InferenceSession(str(self.model_path), options, providers=["CPUExecutionProvider"])
+        inputs, outputs = session.get_inputs(), session.get_outputs()
+        if len(inputs) != 1 or len(outputs) != 1:
             raise InferenceUnavailable("模型输入输出数量不符合约定。")
-        shape = model.input(0).partial_shape
-        if shape.rank.is_dynamic or shape.rank.get_length() != 4:
-            raise InferenceUnavailable("模型输入必须为NCHW四维张量。")
-        if not shape[1].is_dynamic and shape[1].get_length() != 3:
-            raise InferenceUnavailable("模型输入通道必须为RGB三通道。")
-        model.reshape({model.input(0): [1, 3, self.size, self.size]})
-        if model.output(0).shape != [1, 3]:
+        if inputs[0].type != "tensor(float)" or inputs[0].shape != [1, 3, self.size, self.size]:
+            raise InferenceUnavailable("模型输入必须为1×3×384×384的float32张量。")
+        if outputs[0].type != "tensor(float)" or outputs[0].shape != [1, 3]:
             raise InferenceUnavailable("模型必须输出 safe / r15 / r18 三项。")
-        compiled = core.compile_model(model, "CPU", {
-            "INFERENCE_NUM_THREADS": self.threads, "NUM_STREAMS": 1,
-            "PERFORMANCE_HINT": "LATENCY",
-        })
-        self._request = compiled.create_infer_request()
-        self._output = compiled.output(0)
-        self._compiled = compiled
+        self._input_name = inputs[0].name
+        self._output_name = outputs[0].name
+        self._session = session
         self.load_ms = (perf_counter() - started) * 1000
 
     def load(self) -> float:
@@ -134,7 +136,7 @@ class DeepGHSEngine:
 
     def _infer(self, tensor: np.ndarray) -> tuple[dict[str, float], float]:
         started = perf_counter()
-        output = self._request.infer({0: tensor})[self._output]
+        output = self._session.run([self._output_name], {self._input_name: tensor})[0]
         elapsed = (perf_counter() - started) * 1000
         return probability_scores(output), elapsed
 
@@ -149,7 +151,7 @@ class DeepGHSEngine:
         image, first_only = decode_image(data, max_pixels, size=self.size)
         tensor = _rgb_tensor(image)
         with self._lock:
-            cold = self._compiled is None
+            cold = self._session is None
             self._load()
             scores, infer_ms = self._infer(tensor)
             load_ms = self.load_ms if cold else 0.0

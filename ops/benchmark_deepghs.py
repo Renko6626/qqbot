@@ -33,7 +33,7 @@ def timing(call, count):
 
 
 def main():
-    import openvino as ov
+    import onnxruntime as ort
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("data/models/deepghs_rating/model.onnx"))
@@ -52,7 +52,7 @@ def main():
     cpu = next((s.split(":", 1)[1].strip() for s in Path("/proc/cpuinfo").read_text().splitlines()
                 if s.startswith("model name")), platform.processor())
     report = {"cpu": cpu, "logical_cpus": os.cpu_count(), "allowed_cpus": len(os.sched_getaffinity(0)),
-              "python": platform.python_version(), "openvino": ov.__version__, "model": str(args.model),
+              "python": platform.python_version(), "onnxruntime": ort.__version__, "model": str(args.model),
               "input": [1, 3, 384, 384], "sample": "synthetic 512x512 RGB PNG", "batch": 1,
               "warmup": args.warmup, "iterations": args.iterations, "baseline_rss_mib": rss_mib(), "runs": []}
     for threads in args.threads:
@@ -60,8 +60,7 @@ def main():
         t = perf_counter(); engine.load(); cold_ms = (perf_counter() - t) * 1000
         loaded_rss = rss_mib()
         for _ in range(args.warmup): engine.classify(data)
-        report["runs"].append({"threads": threads, "streams": 1, "cold_setup_ms": cold_ms, "loaded_rss_mib": loaded_rss, "warmed_rss_mib": rss_mib(),
-                               "precision_hint": str(engine._compiled.get_property("INFERENCE_PRECISION_HINT")),
+        report["runs"].append({"threads": threads, "providers": engine._session.get_providers(), "cold_setup_ms": cold_ms, "loaded_rss_mib": loaded_rss, "warmed_rss_mib": rss_mib(),
                                "tensor_inference": timing(lambda: engine.infer_tensor(tensor), args.iterations),
                                "decode_preprocess_inference": timing(lambda: engine.classify(data), args.iterations), "final_rss_mib": rss_mib()})
     report["process_peak_hwm_mib"] = rss_mib("VmHWM")
