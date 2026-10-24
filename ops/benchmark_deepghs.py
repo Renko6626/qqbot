@@ -11,7 +11,6 @@ from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
-import openvino as ov
 from PIL import Image
 from qqbot.plugins.anime_rating.engine import DeepGHSEngine, preprocess
 
@@ -34,6 +33,8 @@ def timing(call, count):
 
 
 def main():
+    import openvino as ov
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, default=Path("data/models/deepghs_rating/model.onnx"))
     parser.add_argument("--threads", type=int, choices=[1, 2], nargs="+", default=[1, 2])
