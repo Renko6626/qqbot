@@ -53,7 +53,7 @@ BOT_ADMIN_PASSWORD 现在是可编辑变量。初次部署曾设为“仅显示�
 本地修改后先运行受影响的检查，提交并推送 main：
 
 ```bash
-uv run pytest -q
+uv run --extra nsfw pytest -q
 node --check qqbot/static/admin.js
 # 检查改动，不要提交 .env 或业务数据。
 git add <本次修改的文件>
@@ -97,7 +97,7 @@ docker tag python:3.13-slim@sha256:e5c5e1775e212d259fa017226b2719de00a8c134335a0
 docker save qqbot-python:3.13-20261023 | gzip -1 | ssh ali-root 'gunzip | docker load'
 ```
 
-首次构建需从 PyPI 下载已锁定依赖，后续 Docker 缓存可复用。依赖改变时更新 pyproject.toml、uv.lock 和 requirements.lock；不要在运行容器中 pip install。不要为了这个项目修改全局 Docker 镜像源或代理配置。
+首次构建需从 PyPI 下载已锁定依赖，后续 Docker 缓存可复用。依赖改变时更新 pyproject.toml、uv.lock 和 requirements.lock。生产锁包含已确认的ORT运行时，通过`uv export --extra nsfw --no-dev --format requirements-txt --output-file requirements.lock`生成；不要在运行容器中 pip install。不要为了这个项目修改全局 Docker 镜像源或代理配置。
 
 ## 回退
 

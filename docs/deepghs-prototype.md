@@ -103,4 +103,4 @@ uv run --extra nsfw python ops/benchmark_deepghs.py --threads 2 --iterations 50 
 
 `pytest -q` 40项通过，保留Starlette/httpx及NoneBot ForwardRef弃用提示。测试包含官方归一化、透明底、RGB透明颜色键、缩放前EXIF方向校正、输出不重复Softmax、像素边界、动图首帧提示和真实ORT小图运行/复用。新增插件验证复用真实ORT小模型、模拟HTTP图片响应和NoneBot处理器，覆盖未命中不写文件、命中原图和JSON、空文案、同条多图只回复一次、群参数覆盖、独立权限及保存失败不回复；没有连接真实QQ。小图为仓库内无权重的ReduceMean→Softmax ONNX夹具，重建说明见`tests/fixtures/generate_rating_model.py`；运行测试不需要安装onnx模型制作库。官方固定模型已本地通过ORT完整处理路径运行。所有插件可加载，而ORT模块和模型不会随插件发现自动加载。
 
-尚未部署或在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准。当前Dockerfile按默认requirements.lock构建，不包含nsfw可选运行时，本原型按上面的uv命令运行；上线前需要确认可选依赖的容器构建方式、模型持久化挂载及测试群。
+尚未部署或在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准。Docker通过requirements.lock安装包含nsfw的生产依赖；模型保存在持久化data/models/deepghs_rating/model.onnx，归档保存在同一数据卷的anime_rating_hits目录。本地开发仍可用uv的nsfw可选依赖安装方式。实际QQ群收发留待发布后验证。
