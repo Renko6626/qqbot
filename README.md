@@ -12,6 +12,8 @@ SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.
 
 已新增“智能左右对称”，默认关闭。在管理页启用并添加允许的群后，可发送 `/智能左右对称` 附图、回复图片，或按提示补发图片；支持静态图和 GIF。新插件从声明自动发现，开发模板见 `examples/plugin_template/`。插件执行日志在 Coolify 查看。
 
+原型分支提供独立管理的“手动图片识别”和“自动图片监测”，共用ORT CPU引擎。自动功能仅在`r15+r18≥0.8`时归档，默认引用原消息回复“我吃！”和猫猫表情包，回复文案留空时只保存。安装、群参数及归档目录见[图片识别说明](docs/deepghs-prototype.md)，尚未部署到VPS。
+
 “启动时加载”改变后，可以直接点击管理页的 **重启 NoneBot 进程**。页面区分已加载、未加载、加载失败和待重启变更。进程重启会短暂断开连接，再由Docker自动拉起；环境变量和镜像更新仍需到Coolify点Restart。没有增加管理服务、平台token或Docker socket权限。
 
 - [功能容器运维](docs/nonebot-operations.md)
@@ -93,3 +95,7 @@ VPS 当前无法直连 Docker Hub，因此本机拉取官方镜像后通过 dock
 2026-10-23已上线 https://napcat.secret-sealing.club/webui/，直连A记录47.94.44.152，Coolify代理目标为容器内6099。HTTP自动302到HTTPS，WebUI HTTP200、TLS校验通过、页面标题NapCat WebUI、容器healthy。证书由Let's Encrypt签发，到期2027-01-21，后续由Traefik管理续期，未演练续期。
 
 由于现有HTTP跳转规则会拦截ACME验证，VPS `/data/coolify/proxy/dynamic/napcat-acme.yaml` 仅将本域名的 `/.well-known/acme-challenge/` 路径交给 `acme-http@internal`；需保留供续期使用。首次签发的临时路由已移出动态目录，不重启共享代理。原宿主回环端口保留用于排障，OneBot端口仍不发布。
+
+## DeepGHS 手动识别原型
+
+`prototype/deepghs-manual` 分支包含可选的DeepGHS推理引擎和 `/色图识别` 手动入口，未部署线上。模型来源、启动方式及开发机CPU基准见 [原型说明](docs/deepghs-prototype.md)。权重不随Git提交。
