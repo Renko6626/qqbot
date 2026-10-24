@@ -2,6 +2,8 @@
 
 Coolify 项目：QQ Bot。NapCat 与 NoneBot 是两个独立资源，分别启停、发布和查看日志。
 
+SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.md)。其数据与 NapCat 分开保存，试用准备阶段不自动切换 NoneBot 或登录 QQ。
+
 ## NoneBot 插件管理
 
 管理页：https://bot.secret-sealing.club/ 。登录账号密码位于本地 `.env`（Git忽略），打开页面时在浏览器认证框中输入。与NapCat令牌、Coolify账号分别管理。

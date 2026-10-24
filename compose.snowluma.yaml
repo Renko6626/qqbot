@@ -1,0 +1,47 @@
+services:
+  snowluma:
+    # Official v2.1.1 linux/amd64 image, imported before Coolify starts it.
+    image: snowluma:trial-v2.1.1-amd64
+    pull_policy: never
+    restart: unless-stopped
+    hostname: linux-desktop
+    mac_address: "02:42:73:6e:6f:01"
+    shm_size: 1gb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    environment:
+      TZ: Asia/Shanghai
+      SNOWLUMA_UID: "1000"
+      SNOWLUMA_GID: "1000"
+      SNOWLUMA_WEBUI_HOST: 0.0.0.0
+      SNOWLUMA_WEBUI_PORT: "5099"
+      SNOWLUMA_ONEBOT_HOST: 0.0.0.0
+      SNOWLUMA_HOOK_AUTOLOAD: "1"
+      SNOWLUMA_TELEMETRY: "0"
+      SNOWLUMA_QQ_FLAGS: --disable-gpu --disable-software-rasterizer --disable-gpu-compositing
+    ports:
+      - "127.0.0.1:15099:5099"
+      - "127.0.0.1:16081:6081"
+    volumes:
+      - /data/qq-bot/snowluma/data:/app/data
+      - /data/qq-bot/snowluma/qq-config:/app/.config
+      - /data/qq-bot/snowluma/qq-data:/app/.local/share
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:5099/ >/dev/null && curl -fsS http://127.0.0.1:6081/ >/dev/null
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
