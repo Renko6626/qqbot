@@ -1,0 +1,409 @@
+{
+  "python": "3.13.2",
+  "pillow": "12.3.0",
+  "numpy": "2.5.4",
+  "iterations_per_method": 12,
+  "model_threads": 1,
+  "timing_scope": "decode/exif/white RGB/resize/CHW normalization; no inference or download",
+  "cases": [
+    {
+      "name": "constant_alpha_128",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 10290,
+      "decode_only_ms": 31.59669740125537,
+      "methods": {
+        "reference": {
+          "mean_ms": 77.79069353515904,
+          "p95_ms": 105.21401353180407,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.005806644447147846,
+            "r15": 0.0009683214593678713,
+            "r18": 0.9932250380516052
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 64.86801027009885,
+          "p95_ms": 90.49862148240209,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.005806644447147846,
+            "r15": 0.0009683214593678713,
+            "r18": 0.9932250380516052
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 59.93710892895857,
+          "p95_ms": 74.81402559205887,
+          "max_pixel_channel_difference": 1,
+          "mean_pixel_channel_difference": 0.00010850694444444444,
+          "changed_pixel_fraction": 0.0003255208333333333,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.005814652424305677,
+            "r15": 0.0009697414934635162,
+            "r18": 0.9932156205177307
+          },
+          "max_probability_difference": 9.417533874511719e-06,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "varying_alpha",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 10137,
+      "decode_only_ms": 32.20048469180862,
+      "methods": {
+        "reference": {
+          "mean_ms": 83.07664329186082,
+          "p95_ms": 116.23909678310156,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9991874098777771,
+            "r15": 0.0006901391898281872,
+            "r18": 0.0001224103762069717
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 60.644324558476605,
+          "p95_ms": 72.13926799595355,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9991874098777771,
+            "r15": 0.0006901391898281872,
+            "r18": 0.0001224103762069717
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 62.81481900562843,
+          "p95_ms": 81.57649654895064,
+          "max_pixel_channel_difference": 3,
+          "mean_pixel_channel_difference": 0.3476291232638889,
+          "changed_pixel_fraction": 0.6198255750868056,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.9987724423408508,
+            "r15": 0.0011795206228271127,
+            "r18": 4.795316272065975e-05
+          },
+          "max_probability_difference": 0.0004893814329989254,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "checker_alpha",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 14048,
+      "decode_only_ms": 31.43154503777623,
+      "methods": {
+        "reference": {
+          "mean_ms": 56.915054408212505,
+          "p95_ms": 57.81017178669572,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.0029458594508469105,
+            "r15": 0.0005073256907053292,
+            "r18": 0.9965468049049377
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 51.67438291634122,
+          "p95_ms": 53.23506901040673,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.0029458594508469105,
+            "r15": 0.0005073256907053292,
+            "r18": 0.9965468049049377
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 54.89748654266199,
+          "p95_ms": 56.49854689836502,
+          "max_pixel_channel_difference": 1,
+          "mean_pixel_channel_difference": 0.38984736689814814,
+          "changed_pixel_fraction": 0.8035413953993056,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.13799183070659637,
+            "r15": 0.0033015720546245575,
+            "r18": 0.858706533908844
+          },
+          "max_probability_difference": 0.13784027099609375,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "low_alpha",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 10302,
+      "decode_only_ms": 32.78390737250447,
+      "methods": {
+        "reference": {
+          "mean_ms": 84.81771576528747,
+          "p95_ms": 114.77275751531124,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9992687106132507,
+            "r15": 0.00022468283714260906,
+            "r18": 0.0005066435551270843
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 65.86806864167254,
+          "p95_ms": 92.50845052301884,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9992687106132507,
+            "r15": 0.00022468283714260906,
+            "r18": 0.0005066435551270843
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 65.49668886388342,
+          "p95_ms": 90.72257699444889,
+          "max_pixel_channel_difference": 1,
+          "mean_pixel_channel_difference": 0.3720770941840278,
+          "changed_pixel_fraction": 0.7210015190972222,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.9994193315505981,
+            "r15": 0.0002386598353041336,
+            "r18": 0.0003420878201723099
+          },
+          "max_probability_difference": 0.00016455573495477438,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "noisy_cutout",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 6641303,
+      "decode_only_ms": 63.7616942015787,
+      "methods": {
+        "reference": {
+          "mean_ms": 90.9164121064047,
+          "p95_ms": 104.00643348693846,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9956223368644714,
+            "r15": 0.0007552875322289765,
+            "r18": 0.0036222937051206827
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 85.16446702803175,
+          "p95_ms": 101.31021235138178,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9956223368644714,
+            "r15": 0.0007552875322289765,
+            "r18": 0.0036222937051206827
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 86.80054607490699,
+          "p95_ms": 106.41689682379365,
+          "max_pixel_channel_difference": 2,
+          "mean_pixel_channel_difference": 0.005590368200231482,
+          "changed_pixel_fraction": 0.009921603732638888,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.9956275224685669,
+            "r15": 0.0007553965551778674,
+            "r18": 0.0036169758532196283
+          },
+          "max_probability_difference": 5.317851901054382e-06,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "palette_alpha",
+      "size": [
+        1600,
+        1200
+      ],
+      "mode": "P",
+      "encoded_bytes": 11090,
+      "decode_only_ms": 2.0028093519310155,
+      "methods": {
+        "reference": {
+          "mean_ms": 37.367519456893206,
+          "p95_ms": 38.56918755918741,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.39831969141960144,
+            "r15": 0.13417670130729675,
+            "r18": 0.4675036072731018
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 25.369347383578617,
+          "p95_ms": 25.88943662121892,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.39831969141960144,
+            "r15": 0.13417670130729675,
+            "r18": 0.4675036072731018
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 27.88705099374056,
+          "p95_ms": 28.645628597587347,
+          "max_pixel_channel_difference": 3,
+          "mean_pixel_channel_difference": 0.3907606336805556,
+          "changed_pixel_fraction": 0.6192898220486112,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.31575798988342285,
+            "r15": 0.14871270954608917,
+            "r18": 0.5355293154716492
+          },
+          "max_probability_difference": 0.08256170153617859,
+          "same_label": true
+        }
+      }
+    },
+    {
+      "name": "four_megapixel_shapes",
+      "size": [
+        2000,
+        2000
+      ],
+      "mode": "RGBA",
+      "encoded_bytes": 20155,
+      "decode_only_ms": 56.995130299280085,
+      "methods": {
+        "reference": {
+          "mean_ms": 156.5072052180767,
+          "p95_ms": 188.17692417651412,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9273479580879211,
+            "r15": 0.002077230019494891,
+            "r18": 0.07057484984397888
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "paste_white": {
+          "mean_ms": 106.15919204428792,
+          "p95_ms": 113.97633124142885,
+          "max_pixel_channel_difference": 0,
+          "mean_pixel_channel_difference": 0.0,
+          "changed_pixel_fraction": 0.0,
+          "tensor_bit_identical": true,
+          "scores": {
+            "safe": 0.9273479580879211,
+            "r15": 0.002077230019494891,
+            "r18": 0.07057484984397888
+          },
+          "max_probability_difference": 0.0,
+          "same_label": true
+        },
+        "resize_first": {
+          "mean_ms": 111.8453914920489,
+          "p95_ms": 131.11485438421366,
+          "max_pixel_channel_difference": 2,
+          "mean_pixel_channel_difference": 0.17360206886574073,
+          "changed_pixel_fraction": 0.2552354600694444,
+          "tensor_bit_identical": false,
+          "scores": {
+            "safe": 0.9277030229568481,
+            "r15": 0.0020192463416606188,
+            "r18": 0.07027764618396759
+          },
+          "max_probability_difference": 0.00035506486892700195,
+          "same_label": true
+        }
+      }
+    }
+  ]
+}

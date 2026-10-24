@@ -70,6 +70,8 @@ uv run --extra nsfw python ops/benchmark_deepghs.py --threads 2 --iterations 50 
 
 样本为坐标渐变图，所有计时样本新旧输出张量逐位一致；另对L、LA、P、CMYK输入完成张量对照。透明PNG本轮没有明显收益。共享开发机有调度波动，这些数字不代表真实QQ群图片分布或VPS性能。原始记录：[预处理对照](benchmarks/2026-10-24-deepghs-preprocessing.json)。此前的完整推理基准保留为优化前记录，不能与本表直接相加推算吞吐。
 
+后续[大透明PNG实验](transparent-png-experiment.md)比较了RGB白底paste与先缩小RGBA两条候选；默认路径尚未接入这两项实验。
+
 ## 验证与当前边界
 
 优化后的OpenVINO与ONNX Runtime开发机对照见[运行时比较](deepghs-runtime-comparison.md)。用户确认后，原型已切换到ORT单线程；项目nsfw依赖不再包含OpenVINO。
