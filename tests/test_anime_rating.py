@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from qqbot.plugins.anime_rating.engine import (
+from qqbot.image_rating.engine import (
     DeepGHSEngine, InferenceUnavailable, InvalidImage, decode_image, preprocess, probability_scores,
 )
 

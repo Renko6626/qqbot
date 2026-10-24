@@ -1,7 +1,3 @@
-import os
-from functools import lru_cache
-
-import anyio
 import httpx
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageEvent
@@ -10,34 +6,13 @@ from nonebot.params import Arg, CommandArg, Depends
 from nonebot.plugin import PluginMetadata
 
 from qqbot.context import PluginContext, plugin_context
-from .engine import DeepGHSEngine, InferenceUnavailable, InvalidImage, RatingResult
+from qqbot.image_rating.engine import InferenceUnavailable, InvalidImage, RatingResult
+from qqbot.image_rating import service
 from .spec import SPEC
 
 __plugin_meta__ = PluginMetadata(name=SPEC.name, description=SPEC.description,
                                 usage="/色图识别 附图、回复图片，或按提示补图。")
 matcher = on_command("色图识别", aliases={"识别色图"}, priority=10, block=True)
-
-
-@lru_cache(maxsize=1)
-def get_engine() -> DeepGHSEngine:
-    return DeepGHSEngine(os.environ.get("BOT_DEEPGHS_MODEL_PATH",
-                                        "data/models/deepghs_rating/model.onnx"),
-                         threads=int(os.environ.get("BOT_DEEPGHS_THREADS", "1")))
-
-
-async def download_image(url: str, max_bytes: int) -> bytes:
-    parsed = httpx.URL(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.host:
-        raise InvalidImage("图片地址无效，请重新发送。")
-    async with httpx.AsyncClient(timeout=20) as client:
-        async with client.stream("GET", parsed) as response:
-            response.raise_for_status()
-            data = bytearray()
-            async for chunk in response.aiter_bytes():
-                if len(data) + len(chunk) > max_bytes:
-                    raise InvalidImage("图片文件过大，请发送较小的图片。")
-                data.extend(chunk)
-    return bytes(data)
 
 
 def first_image(message: Message):
@@ -77,9 +52,9 @@ async def identify(matcher: Matcher, received: Message = Arg("image"),
         await matcher.finish("无法获取图片，请重新发送。")
         return
     try:
-        data = await download_image(url, context.options.max_download_mb * 1024 * 1024)
-        result = await anyio.to_thread.run_sync(
-            lambda: get_engine().classify(data, max_pixels=context.options.max_pixels))
+        analysis = await service.analyze_image(url, max_download_mb=context.options.max_download_mb,
+                                               max_pixels=context.options.max_pixels)
+        result = analysis.result
     except (InvalidImage, InferenceUnavailable) as exc:
         context.logger.warning("识别未完成：{}", type(exc).__name__)
         await matcher.finish(str(exc))

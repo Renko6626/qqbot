@@ -14,5 +14,5 @@ async def reply(event: MessageEvent):
     runtime = get_runtime()
     group_id = str(event.group_id) if isinstance(event, GroupMessageEvent) else None
     lines = [f"{spec.name}：{'、'.join(spec.commands)}" for key, spec in CATALOG.items()
-             if runtime.allowed(key, group_id, str(event.user_id))]
+             if spec.commands and runtime.allowed(key, group_id, str(event.user_id))]
     await matcher.finish("当前可用指令\n" + "\n".join(lines))

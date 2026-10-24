@@ -11,7 +11,7 @@ from time import perf_counter
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps, __version__ as pillow_version
-from qqbot.plugins.anime_rating.engine import DeepGHSEngine, _resize_rgb, _rgb_tensor
+from qqbot.image_rating.engine import DeepGHSEngine, _resize_rgb, _rgb_tensor
 
 
 def paste_white(image, size):
