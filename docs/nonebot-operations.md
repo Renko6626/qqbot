@@ -7,10 +7,11 @@
 | 用途 | 入口 |
 | --- | --- |
 | 插件开关与配置 | https://bot.secret-sealing.club/ |
-| QQ 登录与协议设置 | https://napcat.secret-sealing.club/webui/ |
+| QQ 协议设置 | https://snowluma.secret-sealing.club/ |
+| QQ 扫码桌面 | https://qq-desktop.secret-sealing.club/ |
 | 进程、变量和日志 | https://coolify.secret-sealing.club/ |
 
-Coolify 路径：QQ Bot → production → NoneBot（功能容器）或 NapCat（基础设施）。[直接打开 NoneBot 资源](https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/8hzqwaltqvmjo73d5lkv2rll)。
+Coolify 路径：QQ Bot → production → NoneBot（功能容器）或 SnowLuma Trial（接入基础设施）；NapCat 当前停用并保留供回退。[直接打开 NoneBot 资源](https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/8hzqwaltqvmjo73d5lkv2rll)。
 
 ## 登录与修改密码
 
@@ -22,7 +23,7 @@ bot 管理页使用浏览器自带的 HTTP Basic 登录框，当前只有一个�
 4. 等待容器 Running / Healthy，用新的隐私窗口打开 bot 管理页，输入新账号密码。
 5. 自行更新需要保留的本地密码记录。修改本地 `.env` 不会修改线上密码。
 
-BOT_ADMIN_PASSWORD 现在是可编辑变量。初次部署曾设为“仅显示一次”，导致显示 Locked，现已解除该标记，密码值未改。BOT_ONEBOT_TOKEN 仍保持 Locked，它是 NapCat 内部连接令牌，与管理页密码无关。不要为了改管理密码去修改该令牌。
+BOT_ADMIN_PASSWORD 现在是可编辑变量。初次部署曾设为“仅显示一次”，导致显示 Locked，现已解除该标记，密码值未改。BOT_ONEBOT_TOKEN 仍保持 Locked，它是 SnowLuma 内部连接令牌，与管理页密码无关。不要为了改管理密码去修改该令牌。
 
 遗忘管理密码时，通过 Coolify 重新设置即可；没有注册、多用户、页面内改密或 Coolify 单点登录。浏览器会缓存 Basic 凭据，关闭专用隐私窗口可结束这次浏览器会话；修改线上密码可使旧凭据失效。只通过 HTTPS 输入凭据。
 
@@ -131,9 +132,9 @@ Compose源文件 `compose.nonebot.yaml` 在仓库中；线上真正发布使用C
 
 ## 网络、日志与排障
 
-- NoneBot → NapCat：内部正向WS `ws://napcat-n4wkgdcd9fmbitucekxzuyk5:3001`，通过既有NapCat网络连接；不公开OneBot入站接口。
+- NoneBot → SnowLuma：内部正向WS `ws://snowluma-ha3hckthz1jjytu0puicixro:3001`，加入 external 网络 `ha3hckthz1jjytu0puicixro`；不公开 OneBot 入站接口。`BOT_ONEBOT_TOKEN` 必须使用实际登录账号配置的 WS token，不能使用 WebUI 密码或 HTTP token。
 - NoneBot回环入口：127.0.0.1:18089。公网HTTPS由Traefik转到容器8080；`/healthz`仅表明管理进程存活，不代表QQ已连接。
-- QQ未连接时先看NapCat是否登录，再看NoneBot日志；不要重复启动第二套旧机器人。
+- QQ未连接时先看SnowLuma中的QQ是否登录，再看NoneBot日志；不要重复启动第二套旧机器人。
 - stdout/stderr按10MiB×3轮转。日志可能含消息或其他运行内容，分享前脱敏。没有另建日志平台。
 - 保留 `/data/coolify/proxy/dynamic/qqbot-acme.yaml` 与 napcat-acme.yaml，它们为各自域名提供HTTP证书验证路径。无需重启共享Traefik。
 

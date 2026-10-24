@@ -1,6 +1,6 @@
 # SnowLuma 试用运维
 
-本次采用用户确认的独立 Docker/Coolify 试用路线。SnowLuma 承担 QQ 接入，NoneBot 继续负责业务插件、白名单和管理页。先部署到可扫码状态，不自动登录、发消息或切换现有 NoneBot。
+本次采用用户确认的独立 Docker/Coolify 试用路线。SnowLuma 承担 QQ 接入，NoneBot 继续负责业务插件、白名单和管理页。已由用户扫码登录，并按用户要求停用 NapCat、将 NoneBot 切换到 SnowLuma；未自动发送消息。
 
 ## 镜像和持久化
 
@@ -54,7 +54,7 @@ Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/ze
 2. 同一账号不要同时在 NapCat 与 SnowLuma 登录。用户准备扫码前，先在 Coolify 停止 NapCat，保留其资源和数据。
 3. 在远程桌面的真实 QQ 窗口扫码，按手机提示完成验证；不反复自动扫码或重登。
 4. 默认 OneBot HTTP/正向 WebSocket 已生成独立 token，启动时已检查两者均非空。登录后核对实际账号配置和正向 WebSocket；现有 NoneBot 使用正向连接，保持这一方向。OneBot 端口仅用于容器内部网络。
-5. 切换时，将 NoneBot 接入 SnowLuma 的服务网络，更新 `BOT_ONEBOT_URL` 和 `BOT_ONEBOT_TOKEN`，经 Coolify Restart 应用；记录此前配置供回退。当前阶段不提前执行。
+5. 切换时，将 NoneBot 接入 SnowLuma 的服务网络，更新 `BOT_ONEBOT_URL` 和 `BOT_ONEBOT_TOKEN`，经 Coolify Restart 应用；记录此前配置供回退。2026-10-24 已按用户要求完成此切换。
 6. 先观察在线持续时间、风险提示和必要插件行为，再决定是否正式替换。社区成功经验不能保证当前账号免风控。
 
 ## 重启、备份和回退
@@ -63,7 +63,7 @@ Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/ze
 
 备份应在服务停止后归档上述三个目录，并放在 root 私有目录，因其包含 QQ 登录态和密码。不要提交到公开仓库，不要与 NapCat 共用或覆盖卷。
 
-本阶段未切换 NoneBot，停止 SnowLuma 即可结束试用。后续若已切换，先停止 SnowLuma，再恢复 NoneBot 原有网络、URL 和 token，启动 NapCat 并通过 Coolify Restart 更新 NoneBot；必要时由用户重新扫码。不要让两个接入端同时登录同一账号。
+当前已切换 NoneBot；回退时先停止 SnowLuma，再恢复 NoneBot 原有网络、URL 和 token，启动 NapCat 并通过 Coolify Restart 更新 NoneBot；必要时由用户重新扫码。不要让两个接入端同时登录同一账号。
 
 ## 2026-10-24 部署核验
 
@@ -94,3 +94,14 @@ Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/ze
 ### 临时密码失效排查（2026-10-24）
 
 v2.1.1 的 `packages/core/src/webui/auth.ts` 在 `mustChangePassword=true` 时，每次启动生成新临时密码并更新哈希；正式密码设置后才不再这样轮换。此前 HTTPS 重建触发这一行为，root 凭据副本仍为旧值。已从当前容器启动日志同步 `webui_initial_password`，用相同 scrypt 参数核对：旧值与在线配置不匹配，新保存值匹配。没有重置密码、修改认证实现或重启服务；页面实际登录由用户完成。重复读取凭据文件获取更新后的值，登录后完成强制改密。
+
+
+### NoneBot 已切换至 SnowLuma（2026-10-24）
+
+- 用户明确要求停用 NapCat 并修改 NoneBot 默认连接。通过 Coolify Stop 停用 NapCat，保留 Coolify 资源和三个持久化目录，不删除回退数据。
+- NoneBot 的 Compose 与 `.env.example` 默认地址改为 `ws://snowluma-ha3hckthz1jjytu0puicixro:3001`，external 网络改为 `ha3hckthz1jjytu0puicixro`，不再加入 NapCat 网络。
+- 从实际已登录账号的 `onebot_<uin>.json` 读取 WS token，在内存中更新 Coolify `BOT_ONEBOT_TOKEN`（保持 Locked），没有输出令牌或写入 Git。管理员账号密码未更改。
+- 修改前服务配置、容器环境及插件 JSON 备份在 VPS `/root/qq-bot-snowluma/cutover/`（root 私有）；`verification.json` 记录切换后的检查。
+- 只通过 Coolify 重建 NoneBot 应用连接设置，未重建/重启 SnowLuma 或共享代理；镜像保持原 `qqbot:manual`。没有为了 Compose 修改重新构建业务镜像。
+- 切换核验：NoneBot healthy，受认证状态 API 返回 1 个连接账号，实际 WS token 与 SnowLuma 账号配置一致；加入正确服务网络且未加入旧 NapCat 网络。插件 JSON 与切换前逐字节一致，SnowLuma 启动时间不变。
+- Coolify Stop 已移除 NapCat 运行容器，平台资源与三个数据目录保留。未发 QQ 消息或运行浏览器交互。

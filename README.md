@@ -1,8 +1,8 @@
 # QQ Bot 运维
 
-Coolify 项目：QQ Bot。NapCat 与 NoneBot 是两个独立资源，分别启停、发布和查看日志。
+Coolify 项目：QQ Bot。当前由 SnowLuma 提供 QQ 接入，NoneBot 负责插件；两个资源分别启停、发布和查看日志。NapCat 已停用，保留资源和数据供回退。
 
-SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.md)。管理页 https://snowluma.secret-sealing.club/，扫码桌面 https://qq-desktop.secret-sealing.club/。其数据与 NapCat 分开保存，试用准备阶段不自动切换 NoneBot 或登录 QQ。
+SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.md)。管理页 https://snowluma.secret-sealing.club/，扫码桌面 https://qq-desktop.secret-sealing.club/。其数据与 NapCat 分开保存，NoneBot 默认通过内部正向 WebSocket 连接 SnowLuma。
 
 ## NoneBot 插件管理
 
@@ -26,7 +26,9 @@ SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.
 - NapCat：https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/n4wkgdcd9fmbitucekxzuyk5
 - 服务器：ali-root（47.94.44.152）
 
-## 登录 NapCat
+## NapCat 回退资源（当前停用）
+
+以下是旧 NapCat 的维护记录。只有明确回退时才启动，避免与 SnowLuma 同时登录同一账号。
 
 直接打开 https://napcat.secret-sealing.club/webui/ ，输入原有 WebUI 令牌并扫码登录 QQ，无需 SSH 隧道。
 
