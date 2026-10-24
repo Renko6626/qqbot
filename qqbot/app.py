@@ -20,7 +20,7 @@ def main():
     url = os.environ.get("BOT_ONEBOT_URL", "")
     token = os.environ.get("BOT_ONEBOT_TOKEN", "")
     if url and not token:
-        raise ValueError("连接 NapCat 时必须设置 BOT_ONEBOT_TOKEN")
+        raise ValueError("连接 QQ 协议端时必须设置 BOT_ONEBOT_TOKEN")
     nonebot.init(
         driver="~fastapi+~websockets", host="0.0.0.0",
         port=int(os.environ.get("PORT", "8080")), log_level="INFO",

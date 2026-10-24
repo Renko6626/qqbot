@@ -5,6 +5,7 @@ from nonebot.adapters.onebot.v11 import GroupMessageEvent, NoticeEvent
 from nonebot.exception import IgnoredException
 import pytest
 
+from qqbot.catalog import CATALOG
 from qqbot.rules import enforce_plugin_policy, event_allowed
 from qqbot.runtime import Runtime, set_runtime
 from qqbot.settings import PluginSettings, PluginStore
@@ -12,7 +13,7 @@ from qqbot.settings import PluginSettings, PluginStore
 
 def test_host_gate_checks_real_plugin_without_a_plugin_rule(tmp_path):
     nonebot.init(driver="~none")
-    plugin = nonebot.load_plugin("qqbot.plugins.ping")
+    plugin = nonebot.get_plugin("ping") or nonebot.load_plugin(CATALOG["ping"].module)
     matcher = next(iter(plugin.matcher))()
     runtime = Runtime(PluginStore(tmp_path / "plugins.json"))
     runtime.loaded.add("ping")

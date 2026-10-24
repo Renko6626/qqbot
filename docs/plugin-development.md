@@ -1,43 +1,74 @@
 # 插件开发约定
 
-启动：`uv sync`，设置 `.env` 后 `uv run --env-file .env python -m qqbot.app`。本地无需连接QQ时，不设置 BOT_ONEBOT_URL。管理页监听PORT（默认8080），账号密码必须设置。本地默认禁用进程重启；Docker镜像内通过BOT_PROCESS_RESTART_ENABLED=1启用，并由unless-stopped拉起。
+当前宿主为一个 NoneBot 容器，QQ 接入由独立 SnowLuma 提供。权限、公共/群参数、表单和执行日志由宿主处理，业务插件只负责自己的功能。
 
-## 增加功能
+## 从模板创建
 
-1. 在 `qqbot/plugins/` 新增模块，只负责自己的消息入口与功能，不导入其他业务插件。
-2. 在 `qqbot/catalog.py` 添加PluginSpec，声明稳定ID、名称、用途、命令和Pydantic参数模型。参数继承NoOptions以拒绝未知字段并保持JSON类型。
-3. 正常注册NoneBot命令即可。宿主的run_preprocessor依据真实插件元数据，在执行响应器前统一检查权限，插件不再维护一套白名单模块或逐命令复制规则。
-4. 处理时通过 `get_runtime().store.get("插件ID").options` 读取当前参数，不在导入时缓存可动态修改的配置。
-5. 后台任务不经过消息响应器，需执行前显式检查插件开关及目标群配置；网页开关不会取消已经执行的任务。
+复制 `examples/plugin_template/` 到 `qqbot/plugins/<插件ID>/`，把 `plugin_template.py` 重命名为 `<插件ID>.py`，在 `spec.py` 修改 SPEC 的 ID、名称、用途、命令和 Options。
 
-只加载catalog显式注册的插件。外部插件和它们的依赖若自行注册独立响应器，迁移前必须确认能归属到受管理插件，不能假定任意第三方插件都自动受到管理。子插件可沿父插件元数据查找宿主管理项。
+```text
+qqbot/plugins/smart_mirror/
+  __init__.py      # 不导入处理模块、不注册响应器
+  spec.py          # 只声明 SPEC、严格 Pydantic Options，不启动任务或导入重型处理代码
+  smart_mirror.py  # NoneBot 命令和处理入口
+  core.py          # 可单独验证的业务逻辑（按需）
+  models/         # 本插件使用的资源（按需）
+```
 
-## 参数表单
+启动时自动发现这些目录的 `spec.py`，不再修改全局 catalog。只有 `load_on_start=true` 的入口被 NoneBot 加载。入口使用唯一插件 ID 作为文件名，因为 NoneBot 以模块末段识别插件，所有入口都叫 handlers 会冲突。模板不放在 plugins 目录内，不会自动加载。
 
-支持扁平对象中的文本、整数、小数、布尔值、枚举和这些基础类型的简单列表；列表按行输入。数字使用JSON数值，布尔值使用JSON布尔值；群号/QQ号始终是字符串，不能用Number转换。Pydantic字段title/description用于表单，长度/范围等仍由后端最终校验。
+Options 继承 `qqbot.plugin_api.PluginOptions`，字段提供默认值、中文 title/description 和必要的取值范围。只声明实际需要的配置；密钥仍通过环境变量读取。ID 必须与目录名一致。
 
-可空标量与枚举支持空值；可空列表、嵌套对象和多种非空类型混用暂不开放保存。未修改的原值保持不变，字符串列表保留空白。若需要单独的空字符串列表项等编辑语义，随实际插件需求补充专门控件。当前业务插件只有连接检查的文本参数，其他类型可由后续插件直接声明使用。
+## 处理入口
 
-## 授权语义
+正常注册 NoneBot 命令，宿主依据 matcher 的真实插件及父插件元数据自动检查白名单；补图生成的临时 matcher 也继承归属。无需给每个命令再写白名单装饰器。
 
-每个插件有全局enabled和load_on_start。`group_ids`允许指定群；`group_user_ids`中缺少该群的条目表示全群成员，显式空列表表示该群无人可用。成员名单只属于已允许的群，不会让用户跨群绕过限制。
+```python
+from nonebot.params import Depends
+from qqbot.context import PluginContext, plugin_context
 
-`allow_private=false`关闭私聊；为true时，`private_user_ids=null`允许所有私聊用户，列表仅允许其中用户，空列表拒绝所有私聊用户。群和私聊各自判断。
+@matcher.handle()
+async def handle(context: PluginContext = Depends(plugin_context, use_cache=False)):
+    context.logger.info("准备回复")
+    await matcher.finish(context.options.reply_text)
+```
 
-群消息检查群与发送用户，私聊消息检查发送用户。notice/request群自动事件只检查插件开关和群范围，不套用“调用用户”名单；其他未知或缺少作用范围的事件默认拒绝，不误判为私聊。对撤回、禁言、自动监控等行为，业务插件仍需单独明确其实际条件。
+`context.options` 是当前插件的实际 Pydantic Options 实例，群参数已经合并，无需手动传插件 ID、群号或拼参数。`use_cache=False` 确保同一事件内不同响应器不共享错误上下文。每次处理读取当前参数，不在模块导入时缓存。
 
-旧文件缺少新白名单字段时保留原行为，无需重写文件。管理页保存完整单插件配置，不合并旧字段。当前单进程、单管理员低频使用，不提供多管理员冲突合并。外部修改JSON后需重启。
+权限检查适用于声明管理的响应器，不是第三方代码沙箱。外部插件须整理为该结构；独立依赖插件的响应器须明确归属，不能假定任意包都自动纳管。定时任务/后台任务不经过消息响应器，执行前仍需显式检查插件开关和目标群范围；关闭开关不会取消已运行任务。
 
-## 加载与启用
+## 群覆盖与参数表单
 
-全局启用、群/用户范围和参数保存后作用于后续事件，已执行中的处理不会取消。启动时加载决定下次进程是否导入模块；保存后可在网页重启进程。页面分别显示已加载、未加载、加载失败，以及本次启动之后是否修改了加载选择。加载失败不会被当成普通的待重启变更。
+`options` 为公共参数，`group_options[群号]` 只保存该群勾选覆盖的字段。有效值为公共参数与群字段同名覆盖，未指定继承；列表整体替换，不做递归合并。false、0、空列表和模型允许的 null 都是有效显式覆盖。取消勾选恢复继承，修改公共值后未覆盖字段随之更新；私聊使用公共值。
 
-不热卸载、不扫描旧目录，不在运行容器中安装第三方包。新增依赖更新pyproject.toml、运行 `uv lock`，再执行 `uv export --no-dev --format requirements-txt --output-file requirements.lock > /dev/null` 并重建镜像。
+后端校验完整合并结果，但仅存显式覆盖字段，旧 JSON 不含 group_options 时保留旧行为。不允许给未授权群设置参数；参数不会绕过群或用户白名单。公共值修改导致某群合并结果无效时拒绝保存，并保留旧配置。
 
-## 数据与秘密
+同一 schema 自动生成公共和群表单。支持文本、数字、布尔、枚举和基础列表；可空标量支持空值。嵌套、多种非空联合类型和可空列表暂不开放保存。不要手写另一套参数接口/配置表。
 
-`data/plugins.json`只保存插件配置，不存密码、OneBot令牌或模型密钥。秘密由环境变量提供，不通过管理API返回。插件业务文件放 `data/<插件ID>/`。需要数据库、模型或新增外部接口时，先确认必要性和迁移范围。
+## 白名单语义
 
-## 验证
+每个插件有 enabled 和 load_on_start。group_ids 为允许群；group_user_ids 中未设置该群表示全群成员，显式空列表表示无人可用。allow_private=false 关闭私聊；开启后 private_user_ids=null 表示所有用户，列表仅允许指定用户，空列表表示无人。
 
-`uv run pytest -q`验证真实配置、权限与管理API；`node --check qqbot/static/admin.js`及forms.js检查脚本语法。页面默认仅截图。接入生产前由用户选定范围并实际使用；不自动发送QQ消息、撤回或禁言。进程重启须用隔离容器验证，不能在pytest进程中发送SIGTERM。
+群消息检查群及发送用户，私聊检查发送用户；notice/request 群自动事件仅按开关和群范围判断。未知/缺少范围事件默认拒绝。自动撤回/禁言等行为仍需另行明确。
+
+新增插件默认 enabled=false、群和私聊均关闭。首次测试由管理员在网页选择范围，不从旧插件自动复制授权。
+
+## 日志和业务数据
+
+统一执行日志输出到 Coolify，包含 plugin、group、user、event、outcome、elapsed_ms 和异常类型。denied 表示权限拒绝，completed 表示本次响应器正常结束（可能只是提示补图），不代表业务动作一定成功。插件通过 context.logger 补充业务结果，不记录完整聊天、下载 URL、图片数据或密钥。错误回复用简短可理解的提示，不把原始网络异常直接发给用户。
+
+数据文件按需放 `/app/data/<插件ID>/`，不得互相导入业务插件。当前没有全量消息归档、网页日志数据库或任务队列；需要数据库/模型/外部接口时先确认范围。
+
+## 智能左右对称
+
+命令 `/智能左右对称`，支持同条附图、回复图片或按提示补发。先尝试真人、再动漫人脸，取最大人脸中心；无脸用中线，左侧镜像到右侧。保留旧算法的裁剪语义，输出宽度可能变化；GIF 每帧处理后统一透明画布，保留时长和循环设置。
+
+默认最多60帧、10MiB、单帧400万像素，另有总解码6400万像素上限；过大输入提示缩小或减帧，不加入排队/自动重试。计算在线程中执行。动漫 XML 内保留原 MIT 许可，仅迁移这一操作，没有复制旧图片数据或其他图像功能。
+
+## 开发与发布
+
+本地 `uv sync`，设置 `.env` 后 `uv run --env-file .env python -m qqbot.app`。不需要 QQ 时留空 BOT_ONEBOT_URL。管理页默认8080；本地默认禁用网页进程重启，Docker中由unless-stopped拉起。
+
+新增依赖后运行 `uv lock`、`uv export --no-dev --format requirements-txt --output-file requirements.lock`，再重建镜像。仅网页进程重启不能获得新源码或依赖；新增插件按现有SSH pull/build和Coolify Restart发布，不在运行容器pip安装，不热卸载。
+
+验证用 `uv run pytest -q`，`node --check qqbot/static/admin.js`、`node --check qqbot/static/forms.js`。页面默认仅截图，不自动点击填表或发QQ消息。

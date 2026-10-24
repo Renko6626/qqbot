@@ -46,7 +46,7 @@ function updateStatus(card, plugin) {
   $("#restart-notice").hidden = ![...plugins.values()].some(item => item.restart_required);
 }
 
-function groupRule(groupId = "", members = null) {
+function groupRule(groupId, members, schema, overrides, inherited) {
   const row = document.createElement("div");
   row.className = "group-rule";
   const idLabel = document.createElement("label");
@@ -86,9 +86,31 @@ function groupRule(groupId = "", members = null) {
     const form = row.closest("form"); row.remove(); form.dispatchEvent(new Event("input", {bubbles: true}));
   });
   row.append(idLabel, modeLabel, remove, usersLabel);
+  let readOverrides = () => ({});
+  if (Object.keys(schema.properties || {}).length) {
+    const details = document.createElement("details");
+    details.className = "group-options";
+    const summary = document.createElement("summary");
+    summary.textContent = "本群参数";
+    const hint = document.createElement("p");
+    hint.className = "field-hint";
+    hint.textContent = "默认继承公共参数；勾选后仅对此群覆盖。取消勾选恢复继承。";
+    const fields = document.createElement("div");
+    details.append(summary, hint, fields);
+    row.append(details);
+    readOverrides = optionsForm(fields, schema, overrides, {inherited});
+    const updateSummary = () => {
+      const count = fields.querySelectorAll(".override-toggle input:checked").length;
+      summary.textContent = count ? `本群参数（${count} 项覆盖）` : "本群参数（全部继承）";
+    };
+    fields.addEventListener("change", updateSummary);
+    details.addEventListener("toggle", () => { if (details.open) readOverrides.refresh(); });
+    updateSummary();
+  }
+  row.refreshInherited = () => readOverrides.refresh?.();
   row.read = () => {
     if (!/^[1-9][0-9]{0,19}$/.test(id.value.trim())) throw new Error("请填写有效群号，或移除空白群规则。");
-    return {id: id.value.trim(), users: mode.value === "all" ? null : parseIds(users.value)};
+    return {id: id.value.trim(), users: mode.value === "all" ? null : parseIds(users.value), options: readOverrides()};
   };
   return row;
 }
@@ -101,12 +123,6 @@ function createPlugin(plugin) {
   $(".commands", card).textContent = plugin.commands.join("  ");
   const form = $("form", card);
   for (const name of ["enabled", "load_on_start"]) form.elements[name].checked = plugin.settings[name];
-  for (const id of plugin.settings.group_ids) {
-    $(".group-rules", form).append(groupRule(id, plugin.settings.group_user_ids[id] ?? null));
-  }
-  $(".add-group", form).addEventListener("click", () => {
-    $(".group-rules", form).append(groupRule()); form.dispatchEvent(new Event("input", {bubbles: true}));
-  });
   const privateMode = form.elements.private_mode;
   privateMode.value = !plugin.settings.allow_private ? "off" :
     (plugin.settings.private_user_ids === null ? "all" : "allowlist");
@@ -117,7 +133,25 @@ function createPlugin(plugin) {
   try {
     readOptions = optionsForm($(".options", form), plugin.options_schema, plugin.settings.options);
     if (!Object.keys(plugin.options_schema.properties || {}).length) $(".options", form).hidden = true;
+    let currentPublic = plugin.settings.options;
+    const inherited = () => {
+      try { currentPublic = readOptions(); } catch { /* Invalid public input is reported on save. */ }
+      return currentPublic;
+    };
+    const appendGroup = (id = "", members = null, overrides = {}) => {
+      $(".group-rules", form).append(groupRule(id, members, plugin.options_schema, overrides, inherited));
+    };
+    for (const id of plugin.settings.group_ids) {
+      appendGroup(id, plugin.settings.group_user_ids[id] ?? null, plugin.settings.group_options?.[id] || {});
+    }
+    $(".add-group", form).addEventListener("click", () => {
+      appendGroup(); form.dispatchEvent(new Event("input", {bubbles: true}));
+    });
+    $(".options", form).addEventListener("input", () => {
+      form.querySelectorAll(".group-rule").forEach(row => row.refreshInherited());
+    });
   } catch (error) {
+    readOptions = undefined;
     $(".save-status", form).textContent = error.message;
     $(".save-status", form).className = "save-status error";
     $("button[type=submit]", form).disabled = true;
@@ -142,6 +176,7 @@ function createPlugin(plugin) {
         enabled: form.elements.enabled.checked, load_on_start: form.elements.load_on_start.checked,
         group_ids: groups.map(group => group.id),
         group_user_ids: Object.fromEntries(groups.filter(group => group.users !== null).map(group => [group.id, group.users])),
+        group_options: Object.fromEntries(groups.filter(group => Object.keys(group.options).length).map(group => [group.id, group.options])),
         allow_private: privateMode.value !== "off",
         private_user_ids: privateMode.value === "all" ? null : (privateMode.value === "allowlist" ?
           parseIds(form.elements.private_user_ids.value) : plugins.get(plugin.id).settings.private_user_ids),
@@ -184,7 +219,8 @@ function renderGroups() {
       const users = plugin.settings.group_user_ids[group];
       const scope = users === undefined ? "全群成员" : (users.length ? `指定 ${users.length} 位成员` : "成员白名单为空，无人可用");
       const active = plugin.loaded && plugin.settings.enabled ? "已开启" : "当前不可用";
-      text.textContent = `${plugin.name}：${active}，${scope}`;
+      const overrides = Object.keys(plugin.settings.group_options?.[group] || {}).length;
+      text.textContent = `${plugin.name}：${active}，${scope}，${overrides ? `${overrides} 项群参数覆盖` : "继承公共参数"}`;
       const edit = document.createElement("button"); edit.className = "secondary"; edit.type = "button"; edit.textContent = "编辑插件";
       edit.addEventListener("click", () => { switchView("plugins"); document.getElementById(`plugin-${plugin.id}`).scrollIntoView({block: "start"}); });
       row.append(text, edit); section.append(row);
@@ -200,7 +236,7 @@ async function refresh() {
     const accounts = status.connected_accounts;
     $("#connection").textContent = accounts.length ? "QQ 已连接" : "QQ 尚未连接";
     $("#connection").classList.toggle("connected", accounts.length > 0);
-    $("#accounts").textContent = accounts.length ? `账号 ${accounts.join("、")}` : "请检查 NapCat 登录状态和 OneBot 连接。";
+    $("#accounts").textContent = accounts.length ? `账号 ${accounts.join("、")}` : "请检查 SnowLuma 登录状态和 OneBot 连接。";
     $("#started").textContent = formatDate(status.started_at); $("#checked").textContent = formatDate(Date.now());
     $("#restart").disabled = restarting || !status.process_restart_supported;
     $("#restart").title = status.process_restart_supported ? "重新读取已保存配置，不更新镜像或环境变量" : "本环境未启用进程重启";

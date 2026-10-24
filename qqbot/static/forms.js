@@ -39,7 +39,49 @@ function resolveSchema(schema, root) {
   return schema;
 }
 
-export function optionsForm(container, root, values) {
+// Override forms return only checked fields; inherited fields never enter the payload.
+export function optionsForm(container, root, values, override = null) {
+  if (override) {
+    const fields = [];
+    for (const [name, schema] of Object.entries(root.properties || {})) {
+      const section = document.createElement("div");
+      section.className = "option-override";
+      const toggle = document.createElement("label");
+      toggle.className = "override-toggle";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = Object.hasOwn(values, name);
+      toggle.append(checkbox, document.createTextNode(`单独设置${schema.title || name}`));
+      const state = document.createElement("span");
+      state.className = "field-hint";
+      const editor = document.createElement("div");
+      const fieldRoot = {...root, properties: {[name]: schema}};
+      let read;
+      const render = source => {
+        editor.replaceChildren();
+        read = optionsForm(editor, fieldRoot, source);
+        editor.querySelectorAll("input, select, textarea").forEach(input => { input.disabled = !checkbox.checked; });
+        state.textContent = checkbox.checked ? "已覆盖；取消勾选恢复公共参数" : "继承公共参数";
+      };
+      render(checkbox.checked ? values : override.inherited());
+      checkbox.addEventListener("change", () => {
+        if (!checkbox.checked) render(override.inherited());
+        else {
+          editor.querySelectorAll("input, select, textarea").forEach(input => { input.disabled = false; });
+          state.textContent = "已覆盖；取消勾选恢复公共参数";
+        }
+      });
+      section.append(toggle, state, editor);
+      container.append(section);
+      fields.push({checkbox, read: () => read(), refresh: source => { if (!checkbox.checked) render(source); }});
+    }
+    const read = () => Object.assign({}, ...fields.filter(field => field.checkbox.checked).map(field => field.read()));
+    read.refresh = () => {
+      const source = override.inherited();
+      fields.forEach(field => field.refresh(source));
+    };
+    return read;
+  }
   const readers = new Map();
   for (const [name, original] of Object.entries(root.properties || {})) {
     const schema = resolveSchema(original, root);

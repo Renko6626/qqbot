@@ -35,7 +35,7 @@
           <p>群内成员和私聊用户分别授权。指定用户列表为空时，不允许任何用户。</p>
           <p>网页重启会短暂断开 QQ 连接。环境变量或镜像更新仍需到 Coolify 点 Restart。</p>
         </section>
-        <a class="text-link" href="https://napcat.secret-sealing.club/webui/" target="_blank" rel="noopener">打开 NapCat 管理页 <span aria-hidden="true">↗</span></a>
+        <a class="text-link" href="https://snowluma.secret-sealing.club/" target="_blank" rel="noopener">打开 SnowLuma 管理页 <span aria-hidden="true">↗</span></a>
       </aside>
       <div class="plugins-area">
         <div class="list-heading"><div class="view-tabs" role="group" aria-label="查看方式"><button type="button" data-view="plugins" aria-pressed="true">按插件管理</button><button type="button" data-view="groups" aria-pressed="false">按群查看</button></div><span id="plugin-count" class="muted"></span></div>
@@ -69,7 +69,7 @@
         </div>
         <fieldset><legend>群聊权限</legend><p class="field-hint">每个群单独选择成员范围。没有添加的群不可用。</p><div class="group-rules"></div><button type="button" class="secondary add-group">添加群</button></fieldset>
         <fieldset><legend>私聊权限</legend><label class="field">用户范围<select name="private_mode"><option value="off">关闭私聊</option><option value="all">允许所有私聊用户</option><option value="allowlist">仅指定用户</option></select></label><label class="field private-users" hidden>允许的 QQ 号<textarea name="private_user_ids" rows="2" placeholder="每行一个 QQ 号，也可以用逗号分隔" spellcheck="false"></textarea><span class="field-hint">留空不允许任何用户；不影响群聊权限。</span></label></fieldset>
-        <fieldset class="options"><legend>插件参数</legend></fieldset>
+        <fieldset class="options"><legend>公共参数</legend><p class="field-hint">用于私聊及未单独设置参数的群。各群可在群聊权限中覆盖同名参数。</p></fieldset>
         <div class="form-footer"><p class="save-status" role="status" aria-live="polite"></p><button type="submit">保存配置</button></div>
       </form>
     </article>

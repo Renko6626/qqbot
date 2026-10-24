@@ -20,11 +20,15 @@ class PluginSettings(BaseModel):
     # None preserves the original allow_private=True (all private users).
     private_user_ids: list[UserId] | None = Field(default=None, max_length=1000)
     options: dict = Field(default_factory=dict)
+    # Sparse per-group overrides; absent fields inherit public options.
+    group_options: dict[GroupId, dict] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_group_members(self):
         if self.group_user_ids.keys() - set(self.group_ids):
             raise ValueError("成员白名单必须属于已允许的群")
+        if self.group_options.keys() - set(self.group_ids):
+            raise ValueError("群参数必须属于已允许的群")
         if any(len(users) > 1000 for users in self.group_user_ids.values()):
             raise ValueError("每群成员白名单最多1000个用户")
         return self
@@ -47,7 +51,13 @@ class PluginStore:
                 self._settings[key] = self._normalize(key, value)
 
     def _normalize(self, plugin_id: str, settings: PluginSettings) -> PluginSettings:
-        options = CATALOG[plugin_id].options_model.model_validate(settings.options)
+        model = CATALOG[plugin_id].options_model
+        options = model.model_validate(settings.options)
+        group_options = {}
+        for group_id, override in settings.group_options.items():
+            merged = model.model_validate({**options.model_dump(), **override}).model_dump()
+            # Validate the complete result but retain only explicit keys.
+            group_options[group_id] = {key: merged[key] for key in override}
         return settings.model_copy(update={
             "group_ids": list(dict.fromkeys(settings.group_ids)),
             "group_user_ids": {group: list(dict.fromkeys(users))
@@ -55,7 +65,13 @@ class PluginStore:
             "private_user_ids": (list(dict.fromkeys(settings.private_user_ids))
                                  if settings.private_user_ids is not None else None),
             "options": options.model_dump(),
+            "group_options": group_options,
         }, deep=True)
+
+    def resolve_options(self, plugin_id: str, group_id: str | None = None) -> BaseModel:
+        settings = self._settings[plugin_id]
+        override = settings.group_options.get(group_id, {}) if group_id is not None else {}
+        return CATALOG[plugin_id].options_model.model_validate({**settings.options, **override})
 
     def get(self, plugin_id: str) -> PluginSettings:
         return self._settings[plugin_id].model_copy(deep=True)
