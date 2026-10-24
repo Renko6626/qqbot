@@ -18,7 +18,14 @@
 
 ## 初始访问和密码
 
-在客户端终端执行：
+域名入口：
+
+- 管理页：<https://snowluma.secret-sealing.club/>
+- QQ 扫码桌面：<https://qq-desktop.secret-sealing.club/>
+
+两条 A 记录均直连 `47.94.44.152`。由 Coolify/Traefik 终止 HTTPS，再分别转发到容器内 5099 / 6081；访问域名时无需填写端口。Coolify 的 URL 编辑值为 `https://snowluma.secret-sealing.club:5099,https://qq-desktop.secret-sealing.club:6081`，端口表示后端目标，不是公网监听端口。新版 Coolify 会单独保存端口映射，域名列表可能不显示端口。
+
+SSH 转发保留为备用方式，在客户端终端执行：
 
 ```bash
 ssh -N -L 15099:127.0.0.1:15099 -L 16081:127.0.0.1:16081 ali-root
@@ -39,7 +46,7 @@ ssh ali-root 'cat /root/qq-bot-snowluma/credentials.json'
 
 Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv/environment/zi47jjycv0tz997e8bvzzzrg/service/ha3hckthz1jjytu0puicixro)，容器名 `snowluma-ha3hckthz1jjytu0puicixro`。服务器 Compose 副本 `/root/qq-bot-snowluma/compose.yaml`；线上以 Coolify 中的 Compose 为准。
 
-未配置域名时，15099/16081 只绑定 VPS 回环地址；不对公网开放 OneBot 或原生 VNC。若启用 HTTPS 域名，先配置 DNS，再由 Coolify/Traefik 单独路由两个端口。
+15099/16081 仍只绑定 VPS 回环地址，不对公网开放 OneBot 或原生 VNC。证书申请与续期由 Traefik 管理；保留 `/data/coolify/proxy/dynamic/snowluma-acme.yaml`，它仅将两个域名的 HTTP ACME challenge 路径交给 `acme-http@internal`，避免全站 HTTP 跳转拦截验证。无需重启共享代理。
 
 ## 试用和切换
 
@@ -72,3 +79,13 @@ Coolify 服务：[SnowLuma Trial](https://coolify.secret-sealing.club/project/ze
 - 最初导入成功的未使用镜像随后被移除，观测到服务器同时释放约 5GB 空间，疑似平台清理。重新导入后已立即启动服务。未修改全局清理策略或删除其他镜像。
 - 两个建议域名尚未解析，当前提供 SSH 转发访问；未添加公网域名路由或修改共享代理。
 - 尚未扫码登录、发 QQ 消息、切换 NoneBot、验证长期在线、演练重启/备份恢复；没有运行浏览器自动交互。
+
+### 域名与 HTTPS 接入完成
+
+- 用户修正初始误填的 `.192` 后，权威 DNS 及公共 1.1.1.1/8.8.8.8 均确认两个域名指向 `47.94.44.152`。
+- 通过官方 API 保存两个 URL，Coolify 重建本服务后，已核对实际 Traefik 标签的目标端口分别为 5099/6081。Coolify 4.5.0 把 URL 端口拆到内部 `domain_port_overrides`，不是丢失端口。
+- 管理页、扫码桌面 HTTPS GET 均 HTTP 200，TLS 主机名及证书链验证通过；Let's Encrypt 证书分别到期于 2027-01-22 01:47:57 UTC、01:47:45 UTC。
+- 扫码桌面 `wss://qq-desktop.secret-sealing.club/websockify` 握手 HTTP 101；未输入 VNC 密码或操作 QQ。
+- HTTP 自动跳到 HTTPS，域名专用 ACME challenge 路由已保留供续期；未演练未来续期。
+- SnowLuma 重建后 healthy / RestartCount 0；NapCat、NoneBot 启动时间未变。初始凭据和卷保持，未切换业务接入。
+- 首次域名配置前的 Coolify 服务快照保存在 `/root/qq-bot-snowluma/coolify-before-domains.json`。关闭公网入口时，先在 Coolify 删除本服务两个 URL 并重建，再移走 `snowluma-acme.yaml`；SSH 回环入口仍可用，不重置共享代理。
