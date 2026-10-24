@@ -93,3 +93,7 @@ VPS 当前无法直连 Docker Hub，因此本机拉取官方镜像后通过 dock
 2026-10-23已上线 https://napcat.secret-sealing.club/webui/，直连A记录47.94.44.152，Coolify代理目标为容器内6099。HTTP自动302到HTTPS，WebUI HTTP200、TLS校验通过、页面标题NapCat WebUI、容器healthy。证书由Let's Encrypt签发，到期2027-01-21，后续由Traefik管理续期，未演练续期。
 
 由于现有HTTP跳转规则会拦截ACME验证，VPS `/data/coolify/proxy/dynamic/napcat-acme.yaml` 仅将本域名的 `/.well-known/acme-challenge/` 路径交给 `acme-http@internal`；需保留供续期使用。首次签发的临时路由已移出动态目录，不重启共享代理。原宿主回环端口保留用于排障，OneBot端口仍不发布。
+
+## DeepGHS 手动识别原型
+
+`prototype/deepghs-manual` 分支包含可选的DeepGHS推理引擎和 `/色图识别` 手动入口，未部署线上。模型来源、启动方式及开发机CPU基准见 [原型说明](docs/deepghs-prototype.md)。权重不随Git提交。

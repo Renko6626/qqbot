@@ -1,0 +1,61 @@
+from io import BytesIO
+
+import numpy as np
+import pytest
+from PIL import Image
+
+from qqbot.plugins.anime_rating.engine import (
+    DeepGHSEngine, InferenceUnavailable, InvalidImage, decode_image, preprocess, probability_scores,
+)
+
+
+def png(color="red"):
+    b = BytesIO(); Image.new("RGB", (16, 16), color).save(b, format="PNG")
+    return b.getvalue()
+
+
+def test_preprocess_matches_upstream_half_normalization_and_white_alpha():
+    tensor = preprocess(Image.new("RGB", (10, 20), "red"))
+    assert tensor.shape == (1, 3, 384, 384) and tensor.dtype == np.float32
+    assert tensor[0, :, 0, 0].tolist() == [1.0, -1.0, -1.0]
+    transparent = preprocess(Image.new("RGBA", (2, 2), (0, 0, 0, 0)))
+    assert transparent[0, :, 0, 0].tolist() == [1.0, 1.0, 1.0]
+
+
+def test_probability_output_is_not_softmaxed_twice():
+    scores = probability_scores(np.array([[0.99, 0.005, 0.005]], dtype=np.float32))
+    assert scores["safe"] == pytest.approx(0.99)
+    assert scores["r18"] == pytest.approx(0.005)
+    with pytest.raises(InferenceUnavailable):
+        probability_scores(np.array([[4.0, 0.1, 0.2]]))
+
+
+def test_image_limits_and_animated_first_frame_are_explicit():
+    with pytest.raises(InvalidImage): decode_image(png(), max_pixels=1)
+    with pytest.raises(InvalidImage): decode_image(b"not an image", max_pixels=100)
+    b = BytesIO(); Image.new("RGB", (2, 2), "red").save(
+        b, format="GIF", save_all=True, append_images=[Image.new("RGB", (2, 2), "blue")], duration=100)
+    image, first_only = decode_image(b.getvalue(), max_pixels=10)
+    assert first_only and image.convert("RGB").getpixel((0, 0)) == (255, 0, 0)
+
+
+def test_missing_model_has_actionable_error(tmp_path):
+    with pytest.raises(InferenceUnavailable, match="模型未配置"):
+        DeepGHSEngine(tmp_path / "missing.onnx").classify(png())
+
+
+def test_real_openvino_engine_reuses_loaded_model_and_preserves_probabilities(tmp_path):
+    ov = pytest.importorskip("openvino")
+    from openvino import opset13 as ops
+
+    parameter = ops.parameter([-1, 3, -1, -1], np.float32, name="input")
+    means = ops.reduce_mean(parameter, ops.constant([2, 3], np.int64), keep_dims=False)
+    model = ov.Model([ops.softmax(means, 1)], [parameter], "three_channel_means")
+    path = tmp_path / "model.xml"; ov.serialize(model, path)
+    engine = DeepGHSEngine(path)
+    first = engine.classify(png())
+    second = engine.classify(png())
+    assert first.label == "safe" and 0.78 < first.scores["safe"] < 0.80
+    assert first.scores == second.scores
+    assert first.load_ms > 0 and second.load_ms == 0
+    assert not first.first_frame_only
