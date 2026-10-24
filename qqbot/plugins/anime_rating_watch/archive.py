@@ -26,6 +26,8 @@ def save_hit(analysis: ImageAnalysis, root: Path, *, group_id: int, message_id: 
               "message_id": str(message_id), "image_file": path.name, "format": image_format,
               "label": analysis.result.label, "scores": analysis.result.scores,
               "first_frame_only": analysis.result.first_frame_only}
+    if analysis.gate is not None:
+        record["gate"] = {"label": analysis.gate.label, "scores": analysis.gate.scores}
     path.with_suffix(".json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n",
                                         encoding="utf-8")
     return path

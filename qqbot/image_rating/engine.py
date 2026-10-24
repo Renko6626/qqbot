@@ -1,5 +1,5 @@
 """Local DeepGHS anime_rating inference. Importing this module loads no model."""
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from io import BytesIO
 from pathlib import Path
 from threading import Lock
@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 LABELS = ("safe", "r15", "r18")
+GATE_LABELS = ("3d", "bangumi", "comic", "illustration", "not_painting")
 
 
 class InferenceUnavailable(RuntimeError):
@@ -71,23 +72,25 @@ def decode_image(data: bytes, max_pixels: int, *, size: int | None = None) -> tu
         raise InvalidImage("无法读取图片，请重新发送有效图片。") from exc
 
 
-def probability_scores(output: np.ndarray) -> dict[str, float]:
+def probability_scores(output: np.ndarray, labels: tuple[str, ...] = LABELS) -> dict[str, float]:
     values = np.asarray(output, dtype=np.float32).reshape(-1)
-    if values.shape != (3,) or not np.isfinite(values).all():
-        raise InferenceUnavailable("模型输出不符合三分类约定。")
+    if values.shape != (len(labels),) or not np.isfinite(values).all():
+        raise InferenceUnavailable("模型输出不符合分类约定。")
     if np.any(values < 0) or np.any(values > 1) or not np.isclose(values.sum(), 1, atol=0.01):
         raise InferenceUnavailable("模型输出不是预期的概率，请核对模型文件。")
     # Official graph already ends in Softmax. Applying it again is incorrect.
-    return dict(zip(LABELS, map(float, values)))
+    return dict(zip(labels, map(float, values)))
 
 
 class DeepGHSEngine:
-    def __init__(self, model_path: str | Path, *, size: int = 384, threads: int = 1):
+    def __init__(self, model_path: str | Path, *, size: int = 384, threads: int = 1,
+                 labels: tuple[str, ...] = LABELS):
         if size != 384 or threads not in {1, 2}:
             raise ValueError("原型使用384分辨率与1或2个CPU线程")
         self.model_path = Path(model_path)
         self.size = size
         self.threads = threads
+        self.labels = labels
         self._lock = Lock()
         self._session = None
         self._input_name = None
@@ -122,8 +125,8 @@ class DeepGHSEngine:
             raise InferenceUnavailable("模型输入输出数量不符合约定。")
         if inputs[0].type != "tensor(float)" or inputs[0].shape != [1, 3, self.size, self.size]:
             raise InferenceUnavailable("模型输入必须为1×3×384×384的float32张量。")
-        if outputs[0].type != "tensor(float)" or outputs[0].shape != [1, 3]:
-            raise InferenceUnavailable("模型必须输出 safe / r15 / r18 三项。")
+        if outputs[0].type != "tensor(float)" or outputs[0].shape != [1, len(self.labels)]:
+            raise InferenceUnavailable("模型输出类别不符合约定。")
         self._input_name = inputs[0].name
         self._output_name = outputs[0].name
         self._session = session
@@ -138,7 +141,7 @@ class DeepGHSEngine:
         started = perf_counter()
         output = self._session.run([self._output_name], {self._input_name: tensor})[0]
         elapsed = (perf_counter() - started) * 1000
-        return probability_scores(output), elapsed
+        return probability_scores(output, self.labels), elapsed
 
     def infer_tensor(self, tensor: np.ndarray) -> dict[str, float]:
         """Preprocessed-tensor path for isolated CPU benchmarks."""
@@ -146,14 +149,19 @@ class DeepGHSEngine:
             self._load()
             return self._infer(tensor)[0]
 
-    def classify(self, data: bytes, *, max_pixels: int = 4_000_000) -> RatingResult:
+    def classify_tensor(self, tensor: np.ndarray, *, first_frame_only: bool = False) -> RatingResult:
+        """Reuse prepared input between the style gate and the rating model."""
         started = perf_counter()
-        image, first_only = decode_image(data, max_pixels, size=self.size)
-        tensor = _rgb_tensor(image)
         with self._lock:
             cold = self._session is None
             self._load()
             scores, infer_ms = self._infer(tensor)
             load_ms = self.load_ms if cold else 0.0
         return RatingResult(scores, max(scores, key=scores.get), infer_ms,
-                            (perf_counter() - started) * 1000, load_ms, first_only)
+                            (perf_counter() - started) * 1000, load_ms, first_frame_only)
+
+    def classify(self, data: bytes, *, max_pixels: int = 4_000_000) -> RatingResult:
+        started = perf_counter()
+        image, first_only = decode_image(data, max_pixels, size=self.size)
+        result = self.classify_tensor(_rgb_tensor(image), first_frame_only=first_only)
+        return replace(result, total_ms=(perf_counter() - started) * 1000)

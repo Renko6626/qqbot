@@ -19,6 +19,7 @@
 ```bash
 uv sync --extra nsfw
 uv run python ops/fetch_deepghs_model.py
+uv run python ops/fetch_deepghs_model.py --kind gate
 # .env 设置管理员密码；无需QQ时将 BOT_ONEBOT_URL 留空
 uv run --extra nsfw --env-file .env python -m qqbot.app
 ```
@@ -43,18 +44,23 @@ uv run --extra nsfw --env-file .env python -m qqbot.app
 用户已选择命中规则：`scores.r15 + scores.r18 >= threshold`，默认`threshold=0.8`。阈值在管理页可调，支持群覆盖；未用真实群图片校准，不能把模型分数当作人工审核结论。
 
 - `threshold`：r15+r18命中阈值，0到1，默认0.8。
+- `gate_threshold`：二维闸门阈值，默认0.9。闸门先要求最高类别属于动画截图、漫画、插画，再要求这三类概率合计达到阈值；预测最高类别为3D或非绘画时始终跳过。支持群覆盖，与后面的分级阈值独立，已有`threshold`配置保持不变。
 - `reply_text`：命中回复文字，默认“我吃！”。回复依次包含引用原消息、该文字、`milly_cat.jpg`猫猫表情包，组成同一条消息。文字可在管理页修改；留空则仅保存，也不发送表情包。已有配置若显式保存了空文案，需要在管理页填写“我吃！”才会开启回复。
 - `max_download_mb`、`max_pixels`：该插件自己的图片限制，默认10MiB和400万像素，与手动插件独立配置。
 
 多图消息逐张处理，只保存命中项；至少成功保存一张且配置了回复文案时，每条消息回复一次。未命中不保存、不回复。超限或识别/保存失败记录该插件日志并跳过。手动识别命令不进入自动监测；手动提示后的补图由优先级更高的会话处理，避免重复触发。
 
+二维闸门已经接入本分支的自动路径，尚未发布线上。未通过时不运行分级模型，也不保存或回复；缺少闸门模型同样跳过，不回退到未过滤的自动识别。手动`/色图识别`继续直接返回原始分级，不要求闸门模型存在。离线样本及边界见[闸门实验](anime-gate-experiment.md)。普通二维表情包仍可能通过，闸门不替代内容分级。
+
 表情包位于`qqbot/plugins/anime_rating_watch/assets/milly_cat.jpg`，由用户原图972×972压缩至512×512，100,192字节降至30,443字节，并去除原始EXIF元数据。资源随`qqbot`目录进入容器，通过OneBot Base64图片消息发送，无需协议端访问NoneBot容器内路径。
 
-归档根目录通过`BOT_DEEPGHS_ARCHIVE_DIR`设置，默认`data/anime_rating_hits`，必须放在需要保留的持久化目录内。目录结构为`<根目录>/<群号>/<UTC日期>/<消息号>-<随机ID>.<扩展名>`，同目录下有同名JSON。图片保留下载原始字节，不另行压缩；JSON只记录时间、群号、消息号、文件名/格式、最高标签、三个分数和是否只识别首帧，不保存完整聊天正文、用户昵称或下载URL。使用随机ID避免同条多图相互覆盖，不做内容去重。归档可按日期目录手工查看和清理，当前没有自动保留期。
+归档根目录通过`BOT_DEEPGHS_ARCHIVE_DIR`设置，默认`data/anime_rating_hits`，必须放在需要保留的持久化目录内。目录结构为`<根目录>/<群号>/<UTC日期>/<消息号>-<随机ID>.<扩展名>`，同目录下有同名JSON。图片保留下载原始字节，不另行压缩；JSON记录时间、群号、消息号、文件名/格式、分级标签、三个分数和是否只识别首帧，经过闸门的命中另有`gate`对象记录类型标签和五类分数。不保存完整聊天正文、用户昵称或下载URL。使用随机ID避免同条多图相互覆盖，不做内容去重。归档可按日期目录手工查看和清理，当前没有自动保留期。
 
 ## 共用服务
 
-`qqbot/image_rating/`负责推理引擎、输入上限、下载及线程调用；两种插件调用同一个`service.analyze_image`和单例ORT引擎。手动插件仅负责命令和结果展示，自动插件负责命中判断、归档及回复；业务插件不互相导入处理器。关闭任一插件不影响另一插件的权限或处理。发现声明和加载插件均不创建模型会话，首次实际识别才加载。透明PNG仍沿用已验证的先白底合成再缩放路径。
+`qqbot/image_rating/`负责推理引擎、输入上限、下载及线程调用；两种插件调用同一个`service.analyze_image`。分级与闸门各复用一个ORT会话，默认各单线程，自动路径只下载、解码和归一化一次，共用同一份张量，先运行闸门再分级。手动插件仅负责命令和结果展示，自动插件负责命中判断、归档及回复；业务插件不互相导入处理器。关闭任一插件不影响另一插件的权限或处理。发现声明和加载插件均不创建模型会话，首次实际识别才加载。透明PNG仍沿用已验证的先白底合成再缩放路径。
+
+闸门路径可通过`BOT_DEEPGHS_GATE_MODEL_PATH`设置，默认`data/models/deepghs_gate/model.onnx`。发布本分支前，须先把通过固定哈希校验的权重放到VPS挂载目录`/data/qq-bot/nonebot/models/deepghs_gate/model.onnx`，保持容器UID1000可读，再按原SSH构建/Coolify Restart流程发布。当前线上仍是仅分级的旧版本。
 
 ## 历史OpenVINO开发机CPU数量级
 
@@ -101,6 +107,6 @@ uv run --extra nsfw python ops/benchmark_deepghs.py --threads 2 --iterations 50 
 
 优化后的OpenVINO与ONNX Runtime开发机对照见[运行时比较](deepghs-runtime-comparison.md)。用户确认后，原型已切换到ORT单线程；项目nsfw依赖不再包含OpenVINO。
 
-`pytest -q` 40项通过，保留Starlette/httpx及NoneBot ForwardRef弃用提示。测试包含官方归一化、透明底、RGB透明颜色键、缩放前EXIF方向校正、输出不重复Softmax、像素边界、动图首帧提示和真实ORT小图运行/复用。新增插件验证复用真实ORT小模型、模拟HTTP图片响应和NoneBot处理器，覆盖未命中不写文件、命中原图和JSON、空文案、同条多图只回复一次、群参数覆盖、独立权限及保存失败不回复；没有连接真实QQ。小图为仓库内无权重的ReduceMean→Softmax ONNX夹具，重建说明见`tests/fixtures/generate_rating_model.py`；运行测试不需要安装onnx模型制作库。官方固定模型已本地通过ORT完整处理路径运行。所有插件可加载，而ORT模块和模型不会随插件发现自动加载。
+`pytest -q` 44项通过，保留Starlette/httpx及NoneBot ForwardRef弃用提示。测试包含官方归一化、透明底、RGB透明颜色键、缩放前EXIF方向校正、输出不重复Softmax、像素边界、动图首帧提示和真实ORT小图运行/复用。新增插件验证复用真实ORT小模型、模拟HTTP图片响应和NoneBot处理器，覆盖未命中不写文件、命中原图和JSON、空文案、同条多图只回复一次、群参数覆盖、独立权限及保存失败不回复；没有连接真实QQ。新接入验证还覆盖3D/非绘画短路、闸门缺失不绕过和手动识别不依赖闸门。小图为仓库内无权重的分级与五分类ONNX夹具，重建说明见`tests/fixtures/generate_rating_model.py`；运行测试不需要安装onnx模型制作库。官方固定模型已本地通过ORT完整处理路径运行。所有插件可加载，而ORT模块和模型不会随插件发现自动加载。
 
 已部署VPS并验证健康、模型和QQ连接；尚未在实际QQ群内测试手动收发，未针对真人图或群内真实图片校准。Docker通过requirements.lock安装包含nsfw的生产依赖；模型保存在持久化data/models/deepghs_rating/model.onnx，归档保存在同一数据卷的anime_rating_hits目录。本地开发仍可用uv的nsfw可选依赖安装方式。实际QQ群收发留待发布后验证。

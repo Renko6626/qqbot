@@ -45,7 +45,8 @@ async def monitor(bot: Bot, event: GroupMessageEvent,
             continue
         try:
             analysis = await service.analyze_image(url, max_download_mb=options.max_download_mb,
-                                                   max_pixels=options.max_pixels)
+                                                   max_pixels=options.max_pixels,
+                                                   gate_threshold=options.gate_threshold)
             score = analysis.result.scores["r15"] + analysis.result.scores["r18"]
             if score < options.threshold:
                 context.logger.info("自动识别未命中 score={:.4f} threshold={:.4f}", score, options.threshold)
@@ -56,6 +57,9 @@ async def monitor(bot: Bot, event: GroupMessageEvent,
             saved += 1
             context.logger.info("自动识别已保存 score={:.4f} threshold={:.4f} inference_ms={:.1f}",
                                 score, options.threshold, analysis.result.inference_ms)
+        except service.GateRejected as exc:
+            context.logger.info("二维闸门跳过 label={} score={:.4f} threshold={:.4f}",
+                                exc.result.label, service.two_d_score(exc.result), options.gate_threshold)
         except (InvalidImage, InferenceUnavailable, httpx.HTTPError, httpx.InvalidURL) as exc:
             context.logger.warning("自动识别跳过：{}", type(exc).__name__)
         except Exception as exc:

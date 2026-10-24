@@ -145,9 +145,12 @@ def rating_plugins(monkeypatch, tmp_path):
     set_runtime(runtime)
     monkeypatch.setenv("BOT_DEEPGHS_MODEL_PATH", str(
         Path(__file__).parent / "fixtures" / "rating_channel_means.onnx"))
+    monkeypatch.setenv("BOT_DEEPGHS_GATE_MODEL_PATH", str(
+        Path(__file__).parent / "fixtures" / "style_gate.onnx"))
     service.get_engine.cache_clear()
+    service.get_gate_engine.cache_clear()
     requests, sent, payloads = [], [], {}
-    for color in ["red", "blue", "lime"]:
+    for color in ["red", "blue", "lime", "cyan", "black"]:
         buffer = BytesIO(); Image.new("RGB", (16, 16), color).save(buffer, format="PNG")
         payloads[color] = buffer.getvalue()
 
@@ -178,14 +181,16 @@ def rating_plugins(monkeypatch, tmp_path):
     yield SimpleNamespace(runtime=runtime, run=run, sent=sent, requests=requests,
                           root=root, payloads=payloads)
     service.get_engine.cache_clear()
+    service.get_gate_engine.cache_clear()
 
 
-@pytest.mark.parametrize("colors,reply,saved_count,reply_count", [
-    (["red"], "命中提示", 0, 0),
-    (["blue"], "", 1, 0),
-    (["red", "blue", "lime"], None, 2, 1),
+@pytest.mark.parametrize("colors,reply,saved_colors,reply_count", [
+    (["red"], "命中提示", [], 0),
+    (["blue"], "", ["blue"], 0),
+    (["red", "blue", "lime"], None, ["blue", "lime"], 1),
+    (["cyan"], "命中提示", [], 0),  # Rating would hit, but style is 3D.
 ])
-def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply, saved_count, reply_count):
+def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply, saved_colors, reply_count):
     import json
     from nonebot.adapters.onebot.v11 import Message, MessageSegment
 
@@ -197,14 +202,15 @@ def test_monitor_saves_only_hits_and_replies_once(rating_plugins, colors, reply,
     event = group_event().model_copy(update={"message": Message(images)})
     harness.run("anime_rating_watch", event)
     records = list(harness.root.rglob("*.json"))
-    assert len(records) == saved_count and len(harness.sent) == reply_count
+    assert len(records) == len(saved_colors) and len(harness.sent) == reply_count
     originals = []
     for path in records:
         record = json.loads(path.read_text())
         assert record["group_id"] == "12345" and record["message_id"] == "1"
         assert record["scores"]["r15"] + record["scores"]["r18"] >= 0.8
+        assert record["gate"]["label"] == "illustration"
         originals.append(path.with_name(record["image_file"]).read_bytes())
-    assert sorted(originals) == sorted(harness.payloads[c] for c in colors if c != "red")
+    assert sorted(originals) == sorted(harness.payloads[c] for c in saved_colors)
     if reply_count:
         import base64
         from io import BytesIO
@@ -233,6 +239,10 @@ def test_monitor_has_independent_permissions_and_group_overrides(rating_plugins)
         MessageSegment("image", {"file": "test", "url": "https://images.example/blue"}))})
     harness.run("anime_rating_watch", event)
     assert not list(harness.root.rglob("*.json"))  # Group threshold overrides public 0.8.
+    settings.group_options = {"12345": {"gate_threshold": 0.99}}
+    harness.runtime.store.save("anime_rating_watch", settings)
+    harness.run("anime_rating_watch", event)
+    assert not list(harness.root.rglob("*.json"))
     settings.group_options = {"12345": {"max_pixels": 1}}
     harness.runtime.store.save("anime_rating_watch", settings)
     harness.run("anime_rating_watch", event)
@@ -247,11 +257,12 @@ def test_monitor_has_independent_permissions_and_group_overrides(rating_plugins)
     assert len(harness.requests) == before
 
 
-def test_manual_command_uses_shared_analysis_and_is_excluded_from_monitor(rating_plugins):
+def test_manual_command_uses_shared_analysis_and_is_excluded_from_monitor(rating_plugins, monkeypatch):
     from nonebot.adapters.onebot.v11 import Message, MessageSegment
     from qqbot.plugins.anime_rating_watch.anime_rating_watch import is_monitor_message
 
     harness = rating_plugins
+    monkeypatch.setenv("BOT_DEEPGHS_GATE_MODEL_PATH", str(harness.root / "missing.onnx"))
     harness.runtime.store.save("anime_rating", PluginSettings(enabled=True, group_ids=["12345"]))
     message = Message("/色图识别 ") + MessageSegment("image", {
         "file": "test", "url": "https://images.example/blue"})
@@ -274,3 +285,26 @@ def test_monitor_does_not_reply_when_archive_cannot_be_written(rating_plugins):
         "file": "test", "url": "https://images.example/blue"}))})
     harness.run("anime_rating_watch", event)
     assert harness.root.read_text() == "occupied" and not harness.sent
+
+
+@pytest.mark.parametrize("color,label", [("cyan", "3d"), ("black", "not_painting")])
+def test_gate_rejects_before_loading_rating_model(rating_plugins, monkeypatch, color, label):
+    from qqbot.image_rating import service
+
+    monkeypatch.setenv("BOT_DEEPGHS_MODEL_PATH", str(rating_plugins.root / "missing.onnx"))
+    with pytest.raises(service.GateRejected) as rejected:
+        asyncio.run(service.analyze_image(f"https://images.example/{color}",
+                    max_download_mb=10, max_pixels=4_000_000, gate_threshold=0.0))
+    assert rejected.value.result.label == label
+    assert not rating_plugins.root.exists() and not rating_plugins.sent
+
+
+def test_missing_gate_model_is_not_bypassed(rating_plugins, monkeypatch):
+    from qqbot.image_rating import service
+    from qqbot.image_rating.engine import InferenceUnavailable
+
+    monkeypatch.setenv("BOT_DEEPGHS_GATE_MODEL_PATH", str(rating_plugins.root / "missing.onnx"))
+    with pytest.raises(InferenceUnavailable, match="模型未配置"):
+        asyncio.run(service.analyze_image("https://images.example/blue",
+                    max_download_mb=10, max_pixels=4_000_000, gate_threshold=0.9))
+    assert not rating_plugins.root.exists() and not rating_plugins.sent
