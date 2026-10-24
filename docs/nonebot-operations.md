@@ -145,3 +145,8 @@ Compose源文件 `compose.nonebot.yaml` 在仓库中；线上真正发布使用C
 现有VPS继续使用已验证的专用只读SSH部署密钥和GitHub443端口，原更新命令不变。密钥位置 `/root/qq-bot-nonebot/github_readonly`，已知主机文件 `/root/qq-bot-nonebot/github_known_hosts`。该仓库的 `.git/config` 单独设置SSH命令，不修改服务器全局SSH行为。
 
 若遇仓库拉取权限错误，在GitHub qqbot仓库 Settings → Deploy keys 检查该公钥是否仍存在且为只读。密钥丢失后生成新的专用密钥、登记公钥、验证拉取，再删除旧登记；不要把私钥或本机GitHub令牌写入仓库。
+
+
+## 2026-10-24 插件基础设施升级
+
+插件自动发现、群参数覆盖、日志和智能左右对称已经发布，见 [交付记录](plugin-runtime-delivery.md)及[开发约定](plugin-development.md)。新插件默认关闭，需要在管理页添加允许群并启用。用户保存新group_options或smart_mirror配置后，回退旧镜像须同时恢复升级前配置备份。

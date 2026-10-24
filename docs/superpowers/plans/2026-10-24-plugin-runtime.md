@@ -16,7 +16,7 @@
 - [x] Frontend worker: 仅static/{forms.js,admin.js,index.html,admin.css}，群行可编辑可选覆盖；settings.group_options字段；同schema生成表单，不改变其他配置。同步链接SnowLuma。JS语法检查。
 - [x] Image worker: 仅qqbot/plugins/smart_mirror/**、tests/test_smart_mirror.py。spec.SPEC=PluginSpec('smart_mirror',...,Options)；处理器Depends(plugin_context)取得PluginContext(options Pydantic实例、logger)。保留动漫XML版权；不改依赖文件。
 - [x] Root: pyproject/锁文件增加批准依赖，examples/plugin_template模板和开发文档。集中pytest、JS语法、构建/隔离启动，独立审阅。
-- [ ] Root: 备份NoneBot配置，发布已验证镜像到Coolify，核对QQ连接/原配置/新插件关闭；更新文档与交付记录。
+- [x] Root: 备份NoneBot配置，发布已验证镜像到Coolify，核对QQ连接/原配置/新插件关闭；更新文档与交付记录。
 
 ## Review focus
 - 群覆盖不能绕过群/成员白名单，不能把默认值误存为覆盖。
@@ -26,3 +26,5 @@
 - 配置旧文件兼容、保持当前账号连接，不因发布重启SnowLuma。
 
 验证记录：基线16项通过；实现后27项通过（保留既有Starlette弃用提示）；JS语法通过；独立审阅无阻断问题。一次真实OpenCV样图检测轴303、输出606×512，符合左侧裁剪镜像。入口统一改为唯一ID文件名，避免NoneBot模块末段ID冲突。
+
+发布记录见 docs/plugin-runtime-delivery.md，运行代码786098c；权限修复后的真实生产镜像/隔离启动通过，旧配置文件保持、QQ连接1个、SnowLuma不变。
