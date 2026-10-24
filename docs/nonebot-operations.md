@@ -101,7 +101,7 @@ docker save qqbot-python:3.13-20261023 | gzip -1 | ssh ali-root 'gunzip | docker
 
 首次构建需从 PyPI 下载已锁定依赖，后续 Docker 缓存可复用。依赖改变时更新 pyproject.toml、uv.lock 和 requirements.lock。生产锁包含已确认的ORT运行时，通过`uv export --extra nsfw --no-dev --format requirements-txt --output-file requirements.lock`生成；不要在运行容器中 pip install。不要为了这个项目修改全局 Docker 镜像源或代理配置。
 
-Vue 管理页迁移后，Dockerfile 增加前端构建阶段，默认基础镜像为 `node:22.22.1-bookworm-slim`，可通过 `NODE_IMAGE` 构建参数指定已准备好的同版本副本。发布前也需准备该镜像；若 VPS 仍不能访问 Docker Hub，沿用上面的本机 `docker save` / 服务器 `docker load` 方式导入对应 Node 镜像。本次源码修改未在 VPS 验证或导入它。该阶段通过 npm registry 安装 `web/package-lock.json` 中的构建依赖，然后输出 `qqbot/static/`；Python 运行阶段不包含 Node。无需在宿主机或运行容器中安装 npm，不新增服务或公开端口。
+Vue 管理页迁移后，Dockerfile 增加前端构建阶段，默认基础镜像为 `node:22.22.1-bookworm-slim`，可通过 `NODE_IMAGE` 构建参数指定已准备好的同版本副本。发布前也需准备该镜像；若 VPS 仍不能访问 Docker Hub，沿用上面的本机 `docker save` / 服务器 `docker load` 方式导入对应 Node 镜像。2026-10-25 已导入该镜像并通过完整生产镜像构建，记录见 [Vue 管理页发布](vue-admin-release.md)。该阶段通过 npm registry 安装 `web/package-lock.json` 中的构建依赖，然后输出 `qqbot/static/`；Python 运行阶段不包含 Node。无需在宿主机或运行容器中安装 npm，不新增服务或公开端口。
 
 ## 回退
 

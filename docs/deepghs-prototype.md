@@ -51,7 +51,7 @@ uv run --extra nsfw --env-file .env python -m qqbot.app
 
 多图消息逐张处理，只保存命中项；至少成功保存一张且配置了回复文案时，每条消息回复一次。未命中不保存、不回复。超限或识别/保存失败记录该插件日志并跳过。手动识别命令不进入自动监测；手动提示后的补图由优先级更高的会话处理，避免重复触发。
 
-二维闸门已经接入本分支的自动路径，尚未发布线上。未通过时不运行分级模型，也不保存或回复；缺少闸门模型同样跳过，不回退到未过滤的自动识别。手动`/色图识别`继续直接返回原始分级，不要求闸门模型存在。离线样本及边界见[闸门实验](anime-gate-experiment.md)。普通二维表情包仍可能通过，闸门不替代内容分级。
+二维闸门已于 2026-10-25 随公共图集和 Vue 管理页发布到自动路径。未通过时不运行分级模型，也不保存或回复；缺少闸门模型同样跳过，不回退到未过滤的自动识别。手动`/色图识别`继续直接返回原始分级，不要求闸门模型存在。离线样本及边界见[闸门实验](anime-gate-experiment.md)。普通二维表情包仍可能通过，闸门不替代内容分级。
 
 表情包位于`qqbot/plugins/anime_rating_watch/assets/milly_cat.jpg`，由用户原图972×972压缩至512×512，100,192字节降至30,443字节，并去除原始EXIF元数据。资源随`qqbot`目录进入容器，通过OneBot Base64图片消息发送，无需协议端访问NoneBot容器内路径。
 
@@ -61,7 +61,7 @@ uv run --extra nsfw --env-file .env python -m qqbot.app
 
 `qqbot/image_rating/`负责推理引擎、输入上限、下载及线程调用；两种插件调用同一个`service.analyze_image`。分级与闸门各复用一个ORT会话，默认各单线程，自动路径只下载、解码和归一化一次，共用同一份张量，先运行闸门再分级。手动插件仅负责命令和结果展示，自动插件负责命中判断、归档及回复；业务插件不互相导入处理器。关闭任一插件不影响另一插件的权限或处理。发现声明和加载插件均不创建模型会话，首次实际识别才加载。透明PNG仍沿用已验证的先白底合成再缩放路径。
 
-闸门路径可通过`BOT_DEEPGHS_GATE_MODEL_PATH`设置，默认`data/models/deepghs_gate/model.onnx`。发布本分支前，须先把通过固定哈希校验的权重放到VPS挂载目录`/data/qq-bot/nonebot/models/deepghs_gate/model.onnx`，保持容器UID1000可读，再按原SSH构建/Coolify Restart流程发布。当前线上仍是仅分级的旧版本。
+闸门路径可通过`BOT_DEEPGHS_GATE_MODEL_PATH`设置，默认`data/models/deepghs_gate/model.onnx`。发布时已把通过固定哈希校验的权重放到VPS挂载目录`/data/qq-bot/nonebot/models/deepghs_gate/model.onnx`，保持容器UID1000可读，沿用原SSH构建/Coolify Restart流程发布。当前状态见[发布记录](vue-admin-release.md)。
 
 ## 历史OpenVINO开发机CPU数量级
 
