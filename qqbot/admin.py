@@ -1,4 +1,5 @@
 import secrets
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -57,9 +58,10 @@ def register_admin(app: FastAPI, runtime: Runtime, username: str,
 
     @router.get("/assets/{name}")
     async def asset(name: str):
-        if name not in {"admin.css", "admin.js", "forms.js", "albums.js"}:
+        path = STATIC / "assets" / name
+        if not re.fullmatch(r"[A-Za-z0-9_-]+\.(?:js|css)", name) or not path.is_file():
             raise HTTPException(404)
-        return FileResponse(STATIC / name, headers={"Cache-Control": "no-store"})
+        return FileResponse(path, headers={"Cache-Control": "no-store"})
 
     @router.get("/api/status")
     async def status():

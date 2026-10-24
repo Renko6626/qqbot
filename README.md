@@ -16,6 +16,8 @@ SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.
 
 本分支新增公共图集和“定时晚安”，尚未发布。控制页“图集管理”支持新建、切换、上传、查看原图、删除单张图片和空图集，操作沿用后台登录；也提供对应 HTTP 接口。自动图片监测改为写入可配置图集，晚安按北京时间定时发送文案和随机图片。使用说明见[图集与定时晚安](docs/albums-goodnight.md)。
 
+管理前端已在本分支迁移为 Vue 3 + Vite + TypeScript，源码位于 `web/`。顶栏集成连接和进程状态，桌面表单双列，手机使用插件选择器，图集维护集中在工具栏；API 和登录方式不变。本地先执行 `npm ci --prefix web`、`npm run build --prefix web`，再启动 Python；`qqbot/static/` 为生成目录，不提交 Git。Docker 构建会自动生成前端，运行镜像仅保留 Python。
+
 “启动时加载”改变后，可以直接点击管理页的 **重启 NoneBot 进程**。页面区分已加载、未加载、加载失败和待重启变更。进程重启会短暂断开连接，再由Docker自动拉起；环境变量和镜像更新仍需到Coolify点Restart。没有增加管理服务、平台token或Docker socket权限。
 
 - [功能容器运维](docs/nonebot-operations.md)
@@ -25,7 +27,7 @@ SnowLuma 独立试用基础设施见 [SnowLuma 运维](docs/snowluma-operations.
 
 源码仓库：<https://github.com/Renko6626/qqbot>（公开）。服务器源码位于 `/opt/qqbot`。更新时 SSH 执行 `cd /opt/qqbot && bash ops/nonebot.sh update`，构建成功后在 Coolify 的 NoneBot 资源点 **Restart**；详见功能容器运维手册。不会自动发布，也不会重启 NapCat。
 
-现阶段不整包复制旧 `/root/mybot`。AI对话、RAG、图片模型及旧业务插件均待按实际需要逐个整理。代码依赖通过 `uv.lock` 和 `requirements.lock` 固定；本机检查使用 `uv run pytest -q`。
+现阶段不整包复制旧 `/root/mybot`。AI对话、RAG、图片模型及旧业务插件均待按实际需要逐个整理。Python 依赖通过 `uv.lock` 和 `requirements.lock` 固定，前端依赖锁在 `web/package-lock.json`。本机检查使用 `uv run pytest -q`、`npm test --prefix web`、`npm run build --prefix web`。
 
 - 项目：https://coolify.secret-sealing.club/project/zedd9kjkwxycw6qtsf43f8gv
 - 环境：production（zi47jjycv0tz997e8bvzzzrg）

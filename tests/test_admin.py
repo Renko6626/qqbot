@@ -63,3 +63,20 @@ def test_process_restart_requires_login_and_same_origin_header(client):
     http, _ = client
     assert http.post("/api/restart").status_code == 401
     assert http.post("/api/restart", auth=("operator", "test-password")).status_code == 403
+
+
+def test_built_frontend_assets_require_login_and_only_serve_js_css(client, monkeypatch, tmp_path):
+    from qqbot import admin
+
+    monkeypatch.setattr(admin, "STATIC", tmp_path)
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("built application")
+    (tmp_path / "assets" / "index-abc123.js").write_text("built script")
+    (tmp_path / "assets" / "private.json").write_text("private data")
+    http, _ = client
+    assert http.get("/assets/index-abc123.js").status_code == 401
+    http.auth = ("operator", "test-password")
+    assert http.get("/").text == "built application"
+    assert http.get("/assets/index-abc123.js").text == "built script"
+    assert http.get("/assets/private.json").status_code == 404
+    assert http.get("/assets/missing.js").status_code == 404

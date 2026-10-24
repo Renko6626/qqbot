@@ -11,3 +11,5 @@ data/
 *.sqlite*
 *.log
 .superdesign/
+web/node_modules/
+qqbot/static/

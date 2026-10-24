@@ -73,8 +73,12 @@ async def handle(context: PluginContext = Depends(plugin_context, use_cache=Fals
 
 ## 开发与发布
 
-本地 `uv sync`，设置 `.env` 后 `uv run --env-file .env python -m qqbot.app`。不需要 QQ 时留空 BOT_ONEBOT_URL。管理页默认8080；本地默认禁用网页进程重启，Docker中由unless-stopped拉起。
+本地 `uv sync`，前端使用 Node 22.22.1（最低 22.12）并运行 `npm ci --prefix web`、`npm run build --prefix web`；设置 `.env` 后执行 `uv run --env-file .env python -m qqbot.app`。不需要 QQ 时留空 BOT_ONEBOT_URL。管理页默认8080；本地默认禁用网页进程重启，Docker中由unless-stopped拉起。
+
+Vue 3 + TypeScript 源码位于 `web/src/`，`components/` 按插件编辑、群规则、schema 参数、权限预览和图集拆分；`schema.ts` 负责值转换和白名单配置序列化，`api.ts` 复用现有 API 和认证。插件 schema 继续由后端提供，不为新插件手写一套参数表单。群覆盖只提交显式字段，草稿保留在已挂载组件中，不增加持久化草稿。前端不使用 Router、Pinia 或 UI 库。
+
+Vite 输出到 `qqbot/static/`，该目录由构建生成并 Git 忽略。修改前端后需重新构建，本地也可用 `npm run dev --prefix web` 启动 Vite（API 代理到 127.0.0.1:8080，仍需先通过后端登录）；生产不运行 Vite 开发服务。Docker 的 Node 阶段完成构建后将静态文件复制进原 Python 镜像，不增加运行服务和端口。
 
 新增依赖后运行 `uv lock`、`uv export --no-dev --format requirements-txt --output-file requirements.lock`，再重建镜像。仅网页进程重启不能获得新源码或依赖；新增插件按现有SSH pull/build和Coolify Restart发布，不在运行容器pip安装，不热卸载。
 
-验证用 `uv run pytest -q`，`node --check qqbot/static/admin.js`、`node --check qqbot/static/forms.js`。页面默认仅截图，不自动点击填表或发QQ消息。
+验证用 `uv run pytest -q`、`npm test --prefix web`（Node 自带测试工具）和 `npm run build --prefix web`（包含 Vue/TypeScript 类型检查）。页面默认仅截图，不自动点击填表或发QQ消息。TypeScript 固定为与当前 vue-tsc 兼容的 5.9.3，不盲目升级到 7.x；依赖变更须更新 `web/package-lock.json`。

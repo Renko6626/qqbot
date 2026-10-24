@@ -3,5 +3,9 @@
 !requirements.lock
 !qqbot/
 !qqbot/**
+!web/
+!web/**
+web/node_modules/
+qqbot/static/
 qqbot/**/__pycache__/
 qqbot/**/*.pyc
